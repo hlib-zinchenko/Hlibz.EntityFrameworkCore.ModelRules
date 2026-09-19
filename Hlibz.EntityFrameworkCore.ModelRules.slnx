@@ -3,6 +3,7 @@
     <Project Path="src/Hlibz.EntityFrameworkCore.ModelRules/Hlibz.EntityFrameworkCore.ModelRules.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests/Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests.csproj" />
     <Project Path="tests/Hlibz.EntityFrameworkCore.ModelRules.Tests/Hlibz.EntityFrameworkCore.ModelRules.Tests.csproj" />
   </Folder>
 </Solution>

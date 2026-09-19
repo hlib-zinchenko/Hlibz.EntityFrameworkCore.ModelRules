@@ -207,8 +207,12 @@ builds the design-time model, which is why the test is worth keeping.
   checks that every provider reports exactly the same violations.
 - Provider features that add shadow properties by design are allowed, e.g. SQL Server temporal
   tables' period columns.
-- Some rules mean less on some databases. SQLite ignores precision, max length and schemas, and
-  MR009's limit is yours to pick: 63 on PostgreSQL, 64 on MySQL, 128 on SQL Server.
+- Integration tests run against real PostgreSQL, SQL Server and MySQL in Docker. They check
+  that a model passing the rules really creates only snake_case tables, columns, constraints and
+  indexes, and that a reported name is the one the database creates.
+- Some rules mean less on some databases. SQLite ignores precision, max length and schemas.
+  MySQL always names a primary key `PRIMARY`, whatever MR002 checked in the model. MR009's limit
+  is yours to pick: 63 on PostgreSQL, 64 on MySQL, 128 on SQL Server.
 
 ## License
 

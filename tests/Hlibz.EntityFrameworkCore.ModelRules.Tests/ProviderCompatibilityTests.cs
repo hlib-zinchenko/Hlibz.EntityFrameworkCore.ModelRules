@@ -26,7 +26,7 @@ public sealed class ProviderCompatibilityTests
     [MemberData(nameof(Providers))]
     public void AllRules_WithCleanModel_ReportNothing(TestProvider provider)
     {
-        Assert.Empty(Violations(CleanModel, provider));
+        Assert.Empty(Violations(Models.Clean, provider));
     }
 
     [Theory]
@@ -35,7 +35,7 @@ public sealed class ProviderCompatibilityTests
     {
         using TestDbContext context = new(
             ProblemModel,
-            conventions => conventions.UseModelRules(AllRules),
+            conventions => conventions.UseModelRules(RuleSets.AllProviderNeutral),
             provider: provider);
 
         ModelRuleViolationException exception =
@@ -94,28 +94,14 @@ public sealed class ProviderCompatibilityTests
         Assert.Empty(violations);
     }
 
-    /// <summary>
-    /// Every rule except MaxIdentifierLength, whose limit is provider-specific by design.
-    /// </summary>
-    private static void AllRules(ModelRulesBuilder rules) =>
-        rules
-            .NoShadowProperties()
-            .NamesFollow(NamingStyle.SnakeCase)
-            .DecimalsHavePrecision()
-            .StringsHaveMaxLength()
-            .NullabilityMatchesClr()
-            .EnumsStoredAsStrings()
-            .SingleSchema()
-            .NoCascadeDeleteAcrossAggregates<IAggregateRoot>();
-
     private static string[] Violations(Action<ModelBuilder> model, TestProvider provider) =>
     [
-        .. TestDbContext.Validate(model, AllRules, provider: provider)
+        .. TestDbContext.Validate(model, RuleSets.AllProviderNeutral, provider: provider)
             .Select(violation => violation.ToString()),
     ];
 
     /// <summary>
-    /// Breaks every rule in <see cref="AllRules"/> at least once.
+    /// Breaks every rule in <see cref="RuleSets.AllProviderNeutral"/> at least once.
     /// </summary>
     private static void ProblemModel(ModelBuilder model)
     {
@@ -123,56 +109,5 @@ public sealed class ProviderCompatibilityTests
         Models.Countries(model);
         model.Entity<Blog>().Property(x => x.Subtitle).IsRequired();
         model.Entity<State>().ToTable("states", "geo");
-    }
-
-    /// <summary>
-    /// Passes every rule in <see cref="AllRules"/>: explicit snake_case names everywhere,
-    /// precision and max lengths set, the enum stored as a string, and no cascade between roots.
-    /// </summary>
-    private static void CleanModel(ModelBuilder model)
-    {
-        model.Entity<Blog>(blog =>
-        {
-            blog.ToTable("blogs");
-            blog.HasKey(x => x.Id).HasName("pk_blogs");
-            blog.Property(x => x.Id).HasColumnName("id");
-            blog.Property(x => x.Name).HasColumnName("name").HasMaxLength(100);
-            blog.Property(x => x.Subtitle).HasColumnName("subtitle").HasMaxLength(100);
-            blog.Property(x => x.Rating).HasColumnName("rating").HasPrecision(5, 2);
-            blog.Property(x => x.Status)
-                .HasColumnName("status")
-                .HasConversion<string>()
-                .HasMaxLength(20);
-            blog.ComplexProperty(x => x.Address, address =>
-            {
-                address.Property(x => x.City).HasColumnName("address_city").HasMaxLength(100);
-                address.Property(x => x.Latitude)
-                    .HasColumnName("address_latitude")
-                    .HasPrecision(9, 6);
-            });
-            blog.Ignore(x => x.Posts);
-        });
-
-        model.Entity<Currency>(currency =>
-        {
-            currency.ToTable("currencies");
-            currency.HasKey(x => x.Id).HasName("pk_currencies");
-            currency.Property(x => x.Id).HasColumnName("id");
-        });
-
-        model.Entity<Country>(country =>
-        {
-            country.ToTable("countries");
-            country.HasKey(x => x.Id).HasName("pk_countries");
-            country.Property(x => x.Id).HasColumnName("id");
-            country.Property(x => x.CurrencyId).HasColumnName("currency_id");
-            country.Ignore(x => x.States);
-            country.HasOne(x => x.Currency)
-                .WithMany(x => x.Countries)
-                .HasForeignKey(x => x.CurrencyId)
-                .HasConstraintName("fk_countries_currencies_currency_id")
-                .OnDelete(DeleteBehavior.Restrict);
-            country.HasIndex(x => x.CurrencyId).HasDatabaseName("ix_countries_currency_id");
-        });
     }
 }

@@ -6,9 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+# Read-only token: nothing in CI needs to write to the repository.
+permissions:
+  contents: read
+
+# One run per PR at a time: pushing again cancels the PR's run still in progress, so repeated
+# pushes can't pile up runs. Runs on main are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +40,21 @@ jobs:
 
       - name: Test
         run: dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests --no-build --configuration Release
+
+  # Real PostgreSQL, SQL Server and MySQL in Docker (Testcontainers), checking that what the rules
+  # see in the model is what the databases actually create. EF Core 10 only; the model-level
+  # coverage of every EF Core major is in the job above. Only starts once that job passes, so a
+  # change that breaks the build or the unit tests never spins up the database containers.
+  integration-tests:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Integration tests
+        run: dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests --configuration Release

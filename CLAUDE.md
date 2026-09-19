@@ -25,12 +25,19 @@ dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests
 # One target framework only
 dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests -f net10.0
 
+# Integration tests against real databases (needs Docker; pulls Postgres, SQL Server, MySQL)
+dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests
+
 # Pack the library locally
 dotnet pack src/Hlibz.EntityFrameworkCore.ModelRules -c Release -o ./nupkg
 ```
 
 Test projects use Microsoft Testing Platform (`test.runner` in `global.json`), so `dotnet test`
 needs `--project <path>` rather than a bare directory argument.
+
+Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e.g. 24.x, API
+1.43) it fails with "client version 1.44 is too new". Update Docker, or prefix the command with
+`DOCKER_API_VERSION=1.43`. CI's runners have a current Docker.
 
 ## Architecture
 
@@ -78,11 +85,22 @@ needs `--project <path>` rather than a bare directory argument.
   Server temporal period columns are an example: `NoShadowPropertiesRule` recognizes them
   through SQL Server's annotation names, so the library never references a provider package.
   `TestDbContext` swaps in a per-instance `IModelCacheKeyFactory`, so every test gets its own
-  model. Test entities are in `Entities.cs` and shared model configurations in
-  `Models.cs`. Test names follow `Subject_WithCondition_ExpectedOutcome`, where the subject is the
-  rule or API under test, e.g. `NamesFollow_WithJsonOwnedType_ChecksOnlyContainerColumn` or
+  model. Test entities are in `Entities.cs` and shared model configurations in `Models.cs`.
+  Test names follow `Subject_WithCondition_ExpectedOutcome`, where the subject is the rule or
+  API under test, e.g. `NamesFollow_WithJsonOwnedType_ChecksOnlyContainerColumn` or
   `Verify_WithoutRegisteredRules_ThrowsInsteadOfPassingSilently`. `Vehicle`/`Car` deliberately
   sort derived-before-base to catch attribution that depends on `GetEntityTypes()` order.
+- `tests/Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests` (net10.0 / EF Core 10 only) runs
+  the rules against real PostgreSQL, SQL Server and MySQL in Docker via Testcontainers. It
+  proves that what the rules see in the model is what `EnsureCreated` actually produces, by
+  reading each database's own catalog. It also covers each database's defaults and quirks:
+  Postgres truncating long names, `numeric` vs `decimal(18,2)`, SQL Server temporal period
+  columns, and MySQL always naming primary keys `PRIMARY`. `DatabaseFixture` (one container per
+  test class) gives each context a fresh database. The shared tests live in the generic
+  `DatabaseSchemaTests<TFixture>`, and one derived class per provider adds its own. Entities,
+  models and rule sets are compiled in from the unit test project (`Entities.cs`, `Models.cs`,
+  `RuleSets.cs`) rather than duplicated. CI runs it as a separate `integration-tests` job; the
+  release workflow doesn't run it.
 
 ## Releasing
 

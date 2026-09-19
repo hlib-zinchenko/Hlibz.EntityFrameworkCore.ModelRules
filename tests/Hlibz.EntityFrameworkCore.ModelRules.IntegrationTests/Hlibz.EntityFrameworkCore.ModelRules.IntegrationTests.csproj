@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Real databases in Docker via Testcontainers. EF Core 10 only: the unit tests already cover
+    every EF Core major at the model level, and these only check that what the rules see is what
+    the database actually creates.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MySql.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Testcontainers.MySql" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hlibz.EntityFrameworkCore.ModelRules\Hlibz.EntityFrameworkCore.ModelRules.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Models shared with the unit tests">
+    <Compile Include="..\Hlibz.EntityFrameworkCore.ModelRules.Tests\Entities.cs" Link="Shared\Entities.cs" />
+    <Compile Include="..\Hlibz.EntityFrameworkCore.ModelRules.Tests\Models.cs" Link="Shared\Models.cs" />
+    <Compile Include="..\Hlibz.EntityFrameworkCore.ModelRules.Tests\RuleSets.cs" Link="Shared\RuleSets.cs" />
+  </ItemGroup>
+
+</Project>
