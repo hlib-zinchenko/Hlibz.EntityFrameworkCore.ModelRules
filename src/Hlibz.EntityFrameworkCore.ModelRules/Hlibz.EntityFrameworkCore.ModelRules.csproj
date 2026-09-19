@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet metadata">
+    <PackageId>Hlibz.EntityFrameworkCore.ModelRules</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Hlib Zinchenko</Authors>
+    <Description>Declarative rules that check a finished EF Core model against your team's conventions: no shadow properties, snake_case (or other) naming across tables, columns and complex types, decimals with explicit precision, strings with max length, C# nullability matching column nullability, one schema per DbContext, and no cascade deletes across aggregate roots. Rules run once when the model is built, or from a unit test via ModelRules.Verify(dbContext), so they still apply with compiled models. Every violation is reported at once with a rule ID, and individual properties can opt out.</Description>
+    <PackageTags>efcore;entity-framework-core;conventions;model-validation;naming;ddd;modular-monolith;testing</PackageTags>
+    <PackageProjectUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
