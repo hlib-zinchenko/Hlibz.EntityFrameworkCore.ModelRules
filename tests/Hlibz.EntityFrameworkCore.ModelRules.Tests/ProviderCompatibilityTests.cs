@@ -46,6 +46,38 @@ public sealed class ProviderCompatibilityTests
     }
 
     [Theory]
+    [MemberData(nameof(Providers))]
+    public void NamesFollow_WithTpcAndCheckConstraint_ReportSameViolationsAsNpgsql(
+        TestProvider provider)
+    {
+        // Sequences are left out: only some providers generate TPC keys with one.
+        static void Rules(ModelRulesBuilder rules) =>
+            rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.All & ~NamingScope.Sequences);
+
+        static void Model(ModelBuilder model)
+        {
+            Models.Accounts(model);
+            model.Entity<State>().ToTable(
+                table => table.HasCheckConstraint("CK_State_CountryId", "country_id > 0"));
+        }
+
+        string[] npgsql =
+        [
+            .. TestDbContext.Validate(Model, Rules)
+                .Select(violation => violation.ToString()),
+        ];
+        string[] actual =
+        [
+            .. TestDbContext.Validate(Model, Rules, provider: provider)
+                .Select(violation => violation.ToString()),
+        ];
+
+        Assert.Contains(npgsql, violation => violation.Contains("FK_SavingsAccount", StringComparison.Ordinal));
+        Assert.Contains(npgsql, violation => violation.Contains("CK_State_CountryId", StringComparison.Ordinal));
+        Assert.Equal(npgsql, actual);
+    }
+
+    [Theory]
     [MemberData(nameof(JsonProviders))]
     public void NamesFollow_WithJsonOwnedType_ChecksOnlyContainerColumn(TestProvider provider)
     {

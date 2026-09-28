@@ -39,6 +39,49 @@ public sealed class TableRulesTests
     }
 
     [Fact]
+    public void SingleSchema_WithSequenceAndFunctionInOtherSchemas_ReportsThem()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.HasDefaultSchema("billing");
+                Models.Blog(model);
+                model.HasSequence<long>("invoice_numbers");
+                model.HasSequence<long>("order_numbers", "sales");
+                model.HasDbFunction(
+                        typeof(ReportFunctions).GetMethod(nameof(ReportFunctions.OrderTotal))!)
+                    .HasSchema("reporting");
+            },
+            rules => rules.SingleSchema());
+
+        Assert.Equal(
+            [
+                "function reporting.OrderTotal: mapped to schema 'reporting', but the model's "
+                + "tables belong in 'billing'.",
+                "sequence sales.order_numbers: mapped to schema 'sales', but the model's tables "
+                + "belong in 'billing'.",
+            ],
+            violations
+                .Select(violation => $"{violation.Target}: {violation.Message}")
+                .Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void SingleSchema_WithOnlySequences_UsesTheirMajoritySchema()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.HasSequence<long>("first_numbers", "sales");
+                model.HasSequence<long>("second_numbers", "sales");
+                model.HasSequence<long>("stray_numbers", "misc");
+            },
+            rules => rules.SingleSchema());
+
+        Assert.Equal("sequence misc.stray_numbers", Assert.Single(violations).Target);
+    }
+
+    [Fact]
     public void SingleSchema_WithSameTableNameInAnotherSchema_ReportsIt()
     {
         // Post sorts before State, so State's table is the second "items" the rule sees.
@@ -120,6 +163,28 @@ public sealed class TableRulesTests
         Assert.Equal(
             ["Post", "State"],
             violations.Select(violation => violation.Target).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void MaxIdentifierLength_WithLongSequenceName_ReportsIt()
+    {
+        // Under the provider's own limit: EF Core shortens a longer sequence name itself.
+        string longSequence = new('s', 40);
+
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                Models.Blog(model);
+                model.HasSequence<long>(longSequence);
+            },
+            rules => rules.MaxIdentifierLength(30, NamingScope.Sequences));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal($"sequence {longSequence}", violation.Target);
+        Assert.StartsWith(
+            $"sequence name '{longSequence}' is 40",
+            violation.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]

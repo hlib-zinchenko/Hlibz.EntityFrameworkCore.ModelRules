@@ -45,8 +45,7 @@ internal sealed class NamesFollowRule(Regex pattern, string styleName, NamingSco
             if ((scope & identifier.Scope) != 0 && !pattern.IsMatch(identifier.Name))
             {
                 yield return Violation(
-                    identifier.EntityType,
-                    identifier.MemberPath,
+                    identifier,
                     $"{identifier.Kind} name '{identifier.Name}' is not {styleName}.");
             }
         }

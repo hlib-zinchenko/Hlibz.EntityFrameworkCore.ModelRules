@@ -32,8 +32,8 @@ public sealed class ModelRulesBuilder
 
     /// <summary>
     /// MR002: every database identifier in <paramref name="scope"/> - schemas, tables, views,
-    /// columns (complex-type columns included), key, foreign key and index names - matches
-    /// <paramref name="style"/>. Checks the final names, however they were produced (a naming
+    /// columns (complex-type columns included), key, foreign key, index and check constraint
+    /// names, sequences and database functions - matches <paramref name="style"/>. Checks the final names, however they were produced (a naming
     /// convention plugin, <c>HasColumnName</c>, EF defaults).
     /// </summary>
     /// <param name="style">The naming style every identifier must match.</param>
@@ -102,8 +102,9 @@ public sealed class ModelRulesBuilder
         Add(new EnumsStoredAsStringsRule(), except);
 
     /// <summary>
-    /// MR007: every table and view lives in one schema. With <paramref name="schema"/>, that
-    /// schema; without it, whichever schema most tables already use.
+    /// MR007: every table, view, sequence and database function lives in one schema. With
+    /// <paramref name="schema"/>, that schema; without it, whichever schema most tables already
+    /// use.
     /// </summary>
     /// <param name="schema">The schema every table must use, or <see langword="null"/> to only
     /// require that they all agree.</param>

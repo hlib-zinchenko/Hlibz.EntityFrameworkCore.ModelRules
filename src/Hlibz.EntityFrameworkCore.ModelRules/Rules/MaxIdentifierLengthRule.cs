@@ -19,8 +19,7 @@ internal sealed class MaxIdentifierLengthRule(int maxLength, NamingScope scope)
             if ((scope & identifier.Scope) != 0 && identifier.Name.Length > maxLength)
             {
                 yield return Violation(
-                    identifier.EntityType,
-                    identifier.MemberPath,
+                    identifier,
                     $"{identifier.Kind} name '{identifier.Name}' is {identifier.Name.Length} "
                     + $"characters long; the limit is {maxLength}.");
             }

@@ -38,4 +38,26 @@ public sealed class SqlServerSchemaTests(SqlServerFixture database)
         Assert.Contains(("column", "PeriodStart"), identifiers);
         Assert.Contains(("column", "PeriodEnd"), identifiers);
     }
+
+    [Fact]
+    public async Task NamesFollow_WithSequence_ReportsTheNameSqlServerCreates()
+    {
+        await using IntegrationDbContext context = Database.CreateContext(model =>
+        {
+            Models.Clean(model);
+            model.HasSequence<long>("OrderNumbers");
+        });
+
+        IReadOnlyList<ModelRuleViolation> violations = ModelRules.Validate(
+            context,
+            rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Sequences));
+        await context.Database.EnsureCreatedAsync(CancellationToken);
+
+        Assert.Equal("sequence OrderNumbers", Assert.Single(violations).Target);
+        Assert.Contains(
+            await DatabaseFixture.QueryAsync(
+                context,
+                "select name from sys.sequences where schema_id = SCHEMA_ID()"),
+            sequence => (string?)sequence[0] == "OrderNumbers");
+    }
 }

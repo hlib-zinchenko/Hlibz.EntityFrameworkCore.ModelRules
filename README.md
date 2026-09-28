@@ -5,8 +5,8 @@ unit test, when an entity breaks one:
 
 - **No shadow properties.** No foreign keys invented by convention because a key property was
   missing or misnamed.
-- **Naming.** Tables, columns (complex types included), keys, foreign keys and indexes all
-  follow snake_case, or whichever style you pick.
+- **Naming.** Tables, columns (complex types included), keys, foreign keys, indexes, check
+  constraints, sequences and functions all follow snake_case, or whichever style you pick.
 - **Column facets.** Decimals have a precision, strings have a max length, and C# nullability
   matches the column's nullability.
 - **Enums stored as strings.**
@@ -113,14 +113,14 @@ dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 | ID | Rule | Checks |
 |---|---|---|
 | MR001 | `NoShadowProperties()` | Every mapped property has a CLR property or field behind it. TPH discriminators, owned types' synthetic keys and SQL Server temporal period columns are allowed. |
-| MR002 | `NamesFollow(style, scope)` | Every schema, table, view, column, key, foreign key and index name matches `SnakeCase`, `UpperSnakeCase`, `LowerCase`, `CamelCase`, `PascalCase`, or a custom `Regex`. |
+| MR002 | `NamesFollow(style, scope)` | Every schema, table, view, column, key, foreign key, index, check constraint, sequence and database function name matches `SnakeCase`, `UpperSnakeCase`, `LowerCase`, `CamelCase`, `PascalCase`, or a custom `Regex`. |
 | MR003 | `DecimalsHavePrecision()` | Every column stored as `decimal`, including value objects converted to one, has a precision or an explicit column type. |
 | MR004 | `StringsHaveMaxLength()` | Every column stored as `string`, including enums and value objects converted to one, has a max length or an explicit column type. |
 | MR005 | `NullabilityMatchesClr()` | A `string` property isn't nullable in the database, and a `string?` property isn't `NOT NULL`. Same for `Nullable<T>`. |
 | MR006 | `EnumsStoredAsStrings()` | No enum is stored as its underlying number. |
-| MR007 | `SingleSchema(schema?)` | Every table and view is in `schema`. Without a schema, every table uses the schema most tables already use. |
+| MR007 | `SingleSchema(schema?)` | Every table, view, sequence and database function is in `schema`. Without a schema, everything uses the schema most tables already use. |
 | MR008 | `NoCascadeDeleteAcrossAggregates(isRoot)` | No relationship between two aggregate roots deletes by cascade. Identify roots with a marker type (`<IAggregateRoot>`) or a predicate. |
-| MR009 | `MaxIdentifierLength(max, scope)` | No identifier is longer than the database allows: 63 on PostgreSQL, 128 on SQL Server. EF Core shortens the names it generates, but not names you configure explicitly. |
+| MR009 | `MaxIdentifierLength(max, scope)` | No identifier is longer than the database allows: 63 on PostgreSQL, 128 on SQL Server. EF Core shortens the names it generates, and sequence names, but not other names you configure explicitly. |
 
 A few details:
 
@@ -132,6 +132,13 @@ A few details:
   needs a precision. An enum stored as a string needs a max length. Set these once for every
   enum with `Properties<Enum>().HaveConversion<string>().HaveMaxLength(50)` in
   `ConfigureConventions`, which also satisfies MR006.
+- **Sequences and functions have no entity type.** Their violations carry a `Target` such as
+  `sequence sales.order_numbers` and a `null` `EntityClrType`. That includes the sequence EF
+  Core creates for a TPC hierarchy's keys. Under TPC, every concrete table's own foreign key
+  and index names are checked.
+- **`scope` narrows MR002 and MR009** to some kinds of identifier, e.g.
+  `NamingScope.Tables | NamingScope.Columns`. `NamingScope.All`, the default, also covers kinds
+  that later versions add.
 - **JSON columns are skipped by the column facet rules.** That covers owned types mapped with
   `ToJson()` and JSON complex types on EF Core 10. Their properties aren't columns. Naming still
   checks the JSON container column itself.

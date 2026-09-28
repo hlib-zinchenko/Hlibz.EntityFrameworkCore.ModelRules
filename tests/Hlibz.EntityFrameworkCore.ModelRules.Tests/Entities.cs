@@ -113,3 +113,32 @@ public sealed class Car : Vehicle
 {
     public int Seats { get; set; }
 }
+
+/// <summary>
+/// A TPC hierarchy: each concrete account gets a table of its own, with its own copies of the
+/// foreign key and index declared on the abstract base.
+/// </summary>
+public abstract class Account
+{
+    public int Id { get; set; }
+
+    public int CurrencyId { get; set; }
+}
+
+public sealed class SavingsAccount : Account
+{
+    public decimal Rate { get; set; }
+}
+
+public sealed class CheckingAccount : Account
+{
+    public decimal Overdraft { get; set; }
+}
+
+/// <summary>
+/// A method mapped to a database function with <c>HasDbFunction</c>. Never called.
+/// </summary>
+public static class ReportFunctions
+{
+    public static int OrderTotal(int orderId) => throw new NotSupportedException();
+}

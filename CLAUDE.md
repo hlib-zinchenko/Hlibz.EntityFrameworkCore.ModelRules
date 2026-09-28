@@ -74,10 +74,17 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   a dotted `MemberPath` (`Address.City`). `DeclaredProperties` gives each property exactly once
   for property rules. `AllProperties` includes inherited ones, used per store object.
 - `Internal/ModelIdentifiers` collects every database identifier exactly once: schemas, tables,
-  views, columns, and key/FK/index names. It deduplicates by store object, because TPH, table
-  splitting and owned types map several entity types to one table, and it attributes table names
-  to the entity type that introduces the mapping. JSON-mapped owned types contribute only their
-  container column. MR002 (naming) and MR009 (identifier length) both use it.
+  views, columns, key/FK/index/check constraint names, sequences and database functions. It
+  deduplicates by store object, because TPH, table splitting and owned types map several entity
+  types to one table. It walks base and owner types first, so a shared identifier is attributed
+  to the type that introduces it. Constraint names are read per table (inherited ones included),
+  because under TPC each concrete table has its own; row-internal foreign keys (table
+  splitting, owned types in the owner's table) are skipped since the database has no
+  constraint for them. JSON-mapped owned types contribute only their container column.
+  Sequences, functions and schemas only they use have no entity type and are reported with a
+  target. MR002 (naming), MR007 (schema) and MR009 (identifier length) all use it.
+- `NamingScope.All` is `~None`, not an OR of today's flags: enum constants are compiled into
+  callers, so this way a kind added later still reaches code built against an older version.
 - `ModelRuleExclusions` match violations by entity CLR type (`Entity<T>` covers derived types),
   by member path (`Property<T>` also matches members declared on a base type of `T`), by name,
   or by predicate. Per-rule exclusions and global `Except` exclusions are both applied in

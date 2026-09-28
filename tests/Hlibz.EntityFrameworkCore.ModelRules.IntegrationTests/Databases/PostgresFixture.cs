@@ -24,9 +24,15 @@ public sealed class PostgresFixture : DatabaseFixture
         select 'constraint', constraint_name::text from information_schema.table_constraints
         where table_schema = current_schema()
           and constraint_type in ('PRIMARY KEY', 'FOREIGN KEY', 'UNIQUE')
+        -- Check constraints come from pg_constraint below: information_schema also lists NOT NULL
+        -- columns as CHECK constraints, under generated names.
         union all
         select 'index', indexname::text from pg_indexes
         where schemaname = current_schema()
+        union all
+        select 'constraint', c.conname::text from pg_constraint c
+        join pg_namespace n on n.oid = c.connamespace
+        where n.nspname = current_schema() and c.contype = 'c'
         """;
 
     protected override void UseProvider(DbContextOptionsBuilder options, string connectionString) =>

@@ -42,7 +42,23 @@ public enum NamingScope
     Indexes = 32,
 
     /// <summary>
-    /// Every kind of identifier.
+    /// Check constraint names.
     /// </summary>
-    All = Schemas | Tables | Columns | Keys | ForeignKeys | Indexes,
+    CheckConstraints = 64,
+
+    /// <summary>
+    /// Sequence names, including the sequences EF Core creates for TPC keys.
+    /// </summary>
+    Sequences = 128,
+
+    /// <summary>
+    /// Names of database functions mapped with <c>HasDbFunction</c>. Built-in functions are
+    /// skipped.
+    /// </summary>
+    Functions = 256,
+
+    /// <summary>
+    /// Every kind of identifier, including kinds that later versions add.
+    /// </summary>
+    All = ~None,
 }

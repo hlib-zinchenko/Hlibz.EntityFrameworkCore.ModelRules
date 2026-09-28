@@ -44,14 +44,15 @@ internal static class Models
     }
 
     /// <summary>
-    /// Passes every built-in rule: explicit snake_case names everywhere, precision and max
-    /// lengths set, the enum stored as a string, and no cascade between aggregate roots.
+    /// Passes every built-in rule: explicit snake_case names everywhere (a check constraint
+    /// included), precision and max lengths set, the enum stored as a string, and no cascade
+    /// between aggregate roots.
     /// </summary>
     public static void Clean(ModelBuilder model)
     {
         model.Entity<Blog>(blog =>
         {
-            blog.ToTable("blogs");
+            blog.ToTable("blogs", table => table.HasCheckConstraint("ck_blogs_rating", "rating >= 0"));
             blog.HasKey(x => x.Id).HasName("pk_blogs");
             blog.Property(x => x.Id).HasColumnName("id");
             blog.Property(x => x.Name).HasColumnName("name").HasMaxLength(100);
@@ -93,4 +94,25 @@ internal static class Models
             country.HasIndex(x => x.CurrencyId).HasDatabaseName("ix_countries_currency_id");
         });
     }
+
+    /// <summary>
+    /// The TPC Account hierarchy, referencing Currency, with EF Core's default names.
+    /// </summary>
+    public static void Accounts(ModelBuilder model)
+    {
+        model.Entity<Currency>().Ignore(x => x.Countries);
+        model.Entity<Account>(account =>
+        {
+            account.UseTpcMappingStrategy();
+            account.HasOne<Currency>().WithMany().HasForeignKey(x => x.CurrencyId);
+        });
+        model.Entity<SavingsAccount>().Property(x => x.Rate).HasPrecision(5, 2);
+        model.Entity<CheckingAccount>().Property(x => x.Overdraft).HasPrecision(10, 2);
+    }
+
+    /// <summary>
+    /// Maps <see cref="ReportFunctions.OrderTotal"/> as a database function.
+    /// </summary>
+    public static void OrderTotalFunction(ModelBuilder model) =>
+        model.HasDbFunction(typeof(ReportFunctions).GetMethod(nameof(ReportFunctions.OrderTotal))!);
 }

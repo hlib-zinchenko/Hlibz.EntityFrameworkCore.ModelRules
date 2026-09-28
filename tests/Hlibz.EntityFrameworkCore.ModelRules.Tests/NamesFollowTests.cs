@@ -140,4 +140,115 @@ public sealed class NamesFollowTests
         Assert.Equal(typeof(Invoice), violation.EntityClrType);
         Assert.Equal("Contact", violation.MemberPath);
     }
+
+    [Fact]
+    public void NamesFollow_WithSequencesAndFunctions_ReportsThemWithoutEntityType()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                Models.Blog(model);
+                model.HasSequence<long>("OrderNumbers", "sales");
+                model.HasSequence<long>("invoice_numbers", "sales");
+                Models.OrderTotalFunction(model);
+            },
+            rules => rules.NamesFollow(
+                NamingStyle.SnakeCase,
+                NamingScope.Sequences | NamingScope.Functions | NamingScope.Schemas));
+
+        Assert.Equal(
+            ["function OrderTotal", "sequence sales.OrderNumbers"],
+            violations.Select(violation => violation.Target).Order(StringComparer.Ordinal));
+        Assert.All(violations, violation => Assert.Null(violation.EntityClrType));
+        Assert.Contains(
+            violations,
+            violation => violation.Message == "sequence name 'OrderNumbers' is not snake_case.");
+    }
+
+    [Fact]
+    public void NamesFollow_WithSchemaOnlyASequenceUses_ReportsSchemaWithoutEntityType()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                Models.Blog(model);
+                model.HasSequence<long>("order_numbers", "Sales");
+            },
+            rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Schemas));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal("schema Sales", violation.Target);
+        Assert.Equal("schema name 'Sales' is not snake_case.", violation.Message);
+    }
+
+    [Fact]
+    public void NamesFollow_WithCheckConstraint_ReportsItAgainstEntityType()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<State>().ToTable(
+                table => table.HasCheckConstraint("CK_State_CountryId", "country_id > 0")),
+            rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.CheckConstraints));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal("State", violation.Target);
+        Assert.Equal(
+            "check constraint name 'CK_State_CountryId' is not snake_case.",
+            violation.Message);
+    }
+
+    [Fact]
+    public void NamesFollow_WithTpcHierarchy_ChecksEveryTablesForeignKeyAndIndex()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Accounts,
+            rules => rules.NamesFollow(
+                NamingStyle.SnakeCase,
+                NamingScope.ForeignKeys | NamingScope.Indexes));
+
+        Assert.Equal(
+            [
+                "foreign key name 'FK_CheckingAccount_Currency_CurrencyId' is not snake_case.",
+                "foreign key name 'FK_SavingsAccount_Currency_CurrencyId' is not snake_case.",
+                "index name 'IX_CheckingAccount_CurrencyId' is not snake_case.",
+                "index name 'IX_SavingsAccount_CurrencyId' is not snake_case.",
+            ],
+            violations.Select(violation => violation.Message).Order(StringComparer.Ordinal));
+        Assert.All(violations, violation => Assert.Equal("Account.CurrencyId", violation.Target));
+    }
+
+    [Fact]
+    public void NamesFollow_WithTpcHierarchy_ReportsKeySequence()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Accounts,
+            rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Sequences));
+
+        Assert.Equal("sequence AccountSequence", Assert.Single(violations).Target);
+    }
+
+    [Fact]
+    public void NamesFollow_WithOwnedTypeInOwnersTable_ReportsSharedNamesAgainstOwner()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Invoice>(invoice =>
+            {
+                invoice.Property(x => x.Total).HasConversion(x => x.Amount, x => new Money(x));
+                invoice.OwnsOne(x => x.Contact);
+            }),
+            rules => rules.NamesFollow(
+                NamingStyle.SnakeCase,
+                NamingScope.Columns | NamingScope.Keys | NamingScope.ForeignKeys));
+
+        // No foreign key: the owned type shares its owner's row, so the database has none.
+        Assert.Equal(
+            [
+                "Contact.Email: column name 'Contact_Email' is not snake_case.",
+                "Invoice.Id: column name 'Id' is not snake_case.",
+                "Invoice.Id: primary key name 'PK_Invoice' is not snake_case.",
+                "Invoice.Total: column name 'Total' is not snake_case.",
+            ],
+            violations
+                .Select(violation => $"{violation.Target}: {violation.Message}")
+                .Order(StringComparer.Ordinal));
+    }
 }
