@@ -6,6 +6,10 @@ namespace Hlibz.EntityFrameworkCore.ModelRules;
 /// Opt-outs for a rule (or, via <see cref="ModelRulesBuilder.Except"/>, for every rule). A
 /// violation matching any exclusion is dropped.
 /// </summary>
+/// <remarks>
+/// The entity and member exclusions only match violations on entity types. A violation on
+/// something else, such as a sequence, can only be excluded with <see cref="Where"/>.
+/// </remarks>
 public sealed class ModelRuleExclusions
 {
     private readonly List<Func<ModelRuleViolation, bool>> _matchers = [];
@@ -18,7 +22,9 @@ public sealed class ModelRuleExclusions
     /// <returns>The same instance, for chaining.</returns>
     public ModelRuleExclusions Entity<TEntity>()
     {
-        _matchers.Add(violation => typeof(TEntity).IsAssignableFrom(violation.EntityClrType));
+        _matchers.Add(violation =>
+            violation.EntityClrType is { } entityClrType
+            && typeof(TEntity).IsAssignableFrom(entityClrType));
         return this;
     }
 
@@ -66,8 +72,9 @@ public sealed class ModelRuleExclusions
         // derived types that re-map it.
         _matchers.Add(violation =>
             string.Equals(violation.MemberPath, memberPath, StringComparison.Ordinal)
-            && (typeof(TEntity).IsAssignableFrom(violation.EntityClrType)
-                || violation.EntityClrType.IsAssignableFrom(typeof(TEntity))));
+            && violation.EntityClrType is { } entityClrType
+            && (typeof(TEntity).IsAssignableFrom(entityClrType)
+                || entityClrType.IsAssignableFrom(typeof(TEntity))));
         return this;
     }
 
@@ -87,9 +94,10 @@ public sealed class ModelRuleExclusions
         _matchers.Exists(matcher => matcher(violation));
 
     private static bool MatchesEntityName(ModelRuleViolation violation, string name) =>
-        string.Equals(violation.EntityTypeModelName, name, StringComparison.Ordinal)
-        || string.Equals(violation.EntityTypeName, name, StringComparison.Ordinal)
-        || string.Equals(violation.EntityClrType.Name, name, StringComparison.Ordinal);
+        violation.EntityClrType is { } entityClrType
+        && (string.Equals(violation.EntityTypeModelName, name, StringComparison.Ordinal)
+            || string.Equals(violation.EntityTypeName, name, StringComparison.Ordinal)
+            || string.Equals(entityClrType.Name, name, StringComparison.Ordinal));
 
     private static string GetMemberPath(LambdaExpression lambda, string paramName)
     {

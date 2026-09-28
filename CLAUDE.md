@@ -65,6 +65,10 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   use read-only metadata APIs in rules.
 - `Rules/` holds the built-in rules (`internal sealed`, one class each, `ModelRule` base with
   id/name). IDs `MR001`–`MR009` are public contract: never renumber or reuse one.
+- `ModelRuleViolation` has two shapes. The entity constructor takes an entity type and member
+  path. The target constructor is for things that aren't entity types (sequences, the model),
+  and leaves `EntityClrType`, `EntityTypeName` and `MemberPath` null. Entity and member
+  exclusions never match target-only violations; only `Where` does.
 - `Internal/ModelWalker` enumerates scalar properties, complex-type properties included, and
   reports each against the entity type that declares it (or contains its complex property), with
   a dotted `MemberPath` (`Address.City`). `DeclaredProperties` gives each property exactly once

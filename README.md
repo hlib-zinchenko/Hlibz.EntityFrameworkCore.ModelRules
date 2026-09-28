@@ -153,7 +153,7 @@ configurationBuilder.UseModelRules(rules => rules
     .NoCascadeDeleteAcrossAggregates<IAggregateRoot>(except => except
         .Property<Order>(x => x.Customer))            // a navigation
     .StringsHaveMaxLength(except => except
-        .Where(v => v.EntityClrType.Namespace == "MyApp.Legacy"))
+        .Where(v => v.EntityClrType?.Namespace == "MyApp.Legacy"))
     .Except(except => except
         .Entity<OutboxMessage>()                      // an entity type, in every rule
         .Entity("BlogTag")));                         // a shared-type entity, by name
@@ -172,8 +172,10 @@ IReadOnlyList<ModelRuleViolation> violations =
     ModelRules.Validate(context, rules => rules.NamesFollow(NamingStyle.SnakeCase));
 ```
 
-Each `ModelRuleViolation` carries a `RuleId`, a `RuleName`, the `EntityClrType`, a `MemberPath`
-(dotted through complex properties, e.g. `Address.City`) and a `Message`.
+Each `ModelRuleViolation` carries a `RuleId`, a `RuleName`, a `Target` (e.g. `Blog.Address.City`)
+and a `Message`. A violation on an entity type also carries its `EntityClrType`, `EntityTypeName`
+and `MemberPath` (dotted through complex properties, e.g. `Address.City`). All three are `null`
+for a violation on something that isn't an entity type, such as a sequence.
 
 ## Custom rules
 
@@ -195,7 +197,19 @@ public sealed class TablesArePluralRule : IModelRule
 configurationBuilder.UseModelRules(rules => rules.Add(new TablesArePluralRule()));
 ```
 
-Exclusions work on custom rules the same way they do on built-in ones.
+To report something that doesn't belong to an entity type, such as a sequence or the model as a
+whole, pass a target description instead of an entity type:
+
+```csharp
+public IEnumerable<ModelRuleViolation> Validate(IReadOnlyModel model) =>
+    model.GetSequences()
+        .Where(s => s.Schema != "billing")
+        .Select(s => new ModelRuleViolation(this, $"sequence {s.Name}", "belongs in 'billing'."));
+```
+
+Exclusions work on custom rules the same way they do on built-in ones. Entity and member
+exclusions only match violations on entity types; exclude anything else with
+`Where(v => v.Target == "sequence invoice_numbers")`.
 
 ## How it works
 
