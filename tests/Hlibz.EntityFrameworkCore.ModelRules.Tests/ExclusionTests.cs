@@ -79,7 +79,9 @@ public sealed class ExclusionTests
     {
         ModelRuleExclusions exclusions = new ModelRulesBuilderAccessor().Exclusions;
 
-        Assert.Throws<ArgumentException>(() => exclusions.Property<Blog>(x => x.Name.Length + 1));
+        ArgumentException exception = Assert.Throws<ArgumentException>(
+            () => exclusions.Property<Blog>(x => x.Name.Length + 1));
+        Assert.Equal("member", exception.ParamName);
     }
 
     /// <summary>

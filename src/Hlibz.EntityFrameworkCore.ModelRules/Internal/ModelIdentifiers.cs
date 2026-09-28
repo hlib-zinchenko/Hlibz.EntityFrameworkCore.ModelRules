@@ -73,7 +73,7 @@ internal static class ModelIdentifiers
                             entityType,
                             null,
                             storeObject.Schema),
-                        string.Empty);
+                        store);
 
                     if (storeObject.Schema is { } schema)
                     {

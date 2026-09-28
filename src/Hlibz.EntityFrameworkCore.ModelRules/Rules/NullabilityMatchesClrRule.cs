@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Hlibz.EntityFrameworkCore.ModelRules.Internal;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Hlibz.EntityFrameworkCore.ModelRules.Rules;
@@ -9,7 +10,7 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Rules;
 /// <summary>
 /// MR005: a property's C# nullability (nullable reference type annotations, or
 /// <see cref="Nullable{T}"/>) agrees with whether its column allows NULL. Members in code without
-/// nullable annotations are skipped.
+/// nullable annotations, and property bag (indexer) properties, are skipped.
 /// </summary>
 internal sealed class NullabilityMatchesClrRule() : ModelRule("MR005", "NullabilityMatchesClr")
 {
@@ -39,6 +40,13 @@ internal sealed class NullabilityMatchesClrRule() : ModelRule("MR005", "Nullabil
 
     private static bool? IsClrNullable(IReadOnlyProperty property, NullabilityInfoContext context)
     {
+        // An indexer property's PropertyInfo is the property bag's indexer (e.g. a
+        // Dictionary<string, object>'s), which says nothing about this property's nullability.
+        if (property.IsIndexerProperty())
+        {
+            return null;
+        }
+
         if (property.ClrType.IsValueType)
         {
             return property.PropertyInfo is null && property.FieldInfo is null

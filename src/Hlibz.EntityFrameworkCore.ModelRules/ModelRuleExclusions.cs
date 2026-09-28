@@ -46,7 +46,7 @@ public sealed class ModelRuleExclusions
     public ModelRuleExclusions Property<TEntity>(Expression<Func<TEntity, object?>> member)
     {
         ArgumentNullException.ThrowIfNull(member);
-        return Property<TEntity>(GetMemberPath(member));
+        return Property<TEntity>(GetMemberPath(member, nameof(member)));
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ public sealed class ModelRuleExclusions
         || string.Equals(violation.EntityTypeName, name, StringComparison.Ordinal)
         || string.Equals(violation.EntityClrType.Name, name, StringComparison.Ordinal);
 
-    private static string GetMemberPath(LambdaExpression lambda)
+    private static string GetMemberPath(LambdaExpression lambda, string paramName)
     {
         Expression body = lambda.Body;
         while (body is UnaryExpression
@@ -114,7 +114,7 @@ public sealed class ModelRuleExclusions
             throw new ArgumentException(
                 $"'{lambda}' is not a member access expression such as 'e => e.Property' or "
                 + "'e => e.ComplexProperty.Property'.",
-                nameof(lambda));
+                paramName);
         }
 
         return string.Join('.', segments);

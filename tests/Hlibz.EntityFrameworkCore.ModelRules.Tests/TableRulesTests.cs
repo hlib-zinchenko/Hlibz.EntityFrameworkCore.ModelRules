@@ -39,6 +39,22 @@ public sealed class TableRulesTests
     }
 
     [Fact]
+    public void SingleSchema_WithSameTableNameInAnotherSchema_ReportsIt()
+    {
+        // Post sorts before State, so State's table is the second "items" the rule sees.
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.Entity<Post>().ToTable("items", "a");
+                model.Entity<State>().ToTable("items", "b");
+            },
+            rules => rules.SingleSchema("a"));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal(typeof(State), violation.EntityClrType);
+    }
+
+    [Fact]
     public void NoCascadeDeleteAcrossAggregates_WithCascadeBetweenRoots_ReportsRootToRootOnly()
     {
         IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
@@ -88,6 +104,22 @@ public sealed class TableRulesTests
         Assert.Equal(2, violations.Count);
         Assert.Contains(violations, violation => violation.Message.StartsWith($"table name '{longTable}' is 64", StringComparison.Ordinal));
         Assert.Contains(violations, violation => violation.Message.StartsWith($"index name '{longIndex}' is 73", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MaxIdentifierLength_WithSameTableNameInTwoSchemas_ReportsBoth()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.Entity<Post>().ToTable("items", "a");
+                model.Entity<State>().ToTable("items", "b");
+            },
+            rules => rules.MaxIdentifierLength(3, NamingScope.Tables));
+
+        Assert.Equal(
+            ["Post", "State"],
+            violations.Select(violation => violation.Target).Order(StringComparer.Ordinal));
     }
 
     [Fact]

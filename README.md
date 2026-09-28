@@ -12,6 +12,7 @@ unit test, when an entity breaks one:
 - **Enums stored as strings.**
 - **One schema per DbContext.** Useful in a modular monolith.
 - **No cascade deletes across aggregate roots.**
+- **Identifier length.** No table, column or constraint name is longer than your database allows.
 
 [![CI](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml/badge.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Hlibz.EntityFrameworkCore.ModelRules.svg)](https://www.nuget.org/packages/Hlibz.EntityFrameworkCore.ModelRules)
@@ -95,11 +96,12 @@ public void Model_follows_rules()
 the context has no rules registered at all, so it can never pass by accident. Building a model
 never opens a connection, so the test needs no database.
 
-Want to see this against a real database before wiring it into your own project?
-[`samples/`](samples/Hlibz.EntityFrameworkCore.ModelRules.Samples) has a bookstore model that
-passes every rule, a Docker Compose PostgreSQL instance, and a checked-in migration - plus
-instructions for breaking a rule and watching `dotnet ef migrations add` fail with every violation
-listed:
+Want to see this against a real database before wiring it into your own project? The
+[samples project][samples] has a bookstore model that passes every rule, a Docker Compose
+PostgreSQL instance, and a checked-in migration - plus instructions for breaking a rule and
+watching `dotnet ef migrations add` fail with every violation listed:
+
+[samples]: https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/tree/main/samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 
 ```bash
 docker compose -f samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/docker-compose.yml up -d

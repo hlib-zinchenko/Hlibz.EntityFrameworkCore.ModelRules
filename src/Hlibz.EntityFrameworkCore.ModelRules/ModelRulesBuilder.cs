@@ -22,7 +22,8 @@ public sealed class ModelRulesBuilder
     /// <summary>
     /// MR001: every mapped property has a CLR property or field behind it. Catches foreign keys EF
     /// invents by convention when a relationship's key property is missing or misnamed. TPH
-    /// discriminators and owned types' synthetic keys are allowed.
+    /// discriminators, owned types' synthetic keys and SQL Server temporal period columns are
+    /// allowed.
     /// </summary>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>

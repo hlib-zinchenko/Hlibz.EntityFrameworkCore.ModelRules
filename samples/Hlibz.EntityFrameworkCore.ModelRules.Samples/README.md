@@ -30,7 +30,8 @@ dotnet ef database update \
 in Postgres:
 
 ```bash
-docker exec hlibzentityframeworkcoremodelrulessamples-postgres-1 psql -U catalog -d catalog -c "\d catalog.books"
+docker compose -f samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/docker-compose.yml \
+  exec postgres psql -U catalog -d catalog -c "\d catalog.books"
 ```
 
 ## Break it

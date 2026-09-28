@@ -168,4 +168,20 @@ public sealed class ColumnFacetRulesTests
             violation => violation.Target == "Blog.Subtitle"
                          && violation.Message.StartsWith("C# type is nullable", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void NullabilityMatchesClr_WithPropertyBagEntity_ReportsNothing()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.SharedTypeEntity<Dictionary<string, object>>("Setting", setting =>
+            {
+                setting.IndexerProperty<int>("Id");
+                setting.IndexerProperty<string>("Name").IsRequired();
+                setting.IndexerProperty<string>("Note").IsRequired(false);
+                setting.HasKey("Id");
+            }),
+            rules => rules.NullabilityMatchesClr());
+
+        Assert.Empty(violations);
+    }
 }
