@@ -5,16 +5,15 @@ using Microsoft.EntityFrameworkCore;
 namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog;
 
 /// <summary>
-/// A small bookstore model, registered with every built-in rule, that deliberately breaks each one
-/// exactly once - the kind of drift real projects accumulate a little at a time rather than all at
-/// once.
+/// A small bookstore model, registered with every built-in rule, that follows every one of them.
+/// Points at the PostgreSQL instance <c>docker-compose.yml</c> starts, so <c>dotnet ef</c> and
+/// <c>dotnet run</c> can actually reach a database.
 /// </summary>
 public sealed class CatalogDbContext : DbContext
 {
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
-        // Never actually opened: building the model - all UseModelRules and ModelRules.Verify
-        // need - doesn't connect to a database.
-        optionsBuilder.UseNpgsql("Host=localhost;Database=catalog");
+        optionsBuilder.UseNpgsql(
+            "Host=localhost;Port=5433;Database=catalog;Username=catalog;Password=catalog");
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.UseModelRules(rules => rules
@@ -39,37 +38,30 @@ public sealed class CatalogDbContext : DbContext
             author.Property(x => x.Id).HasColumnName("id");
             author.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
 
-            // WithOne() with no HasForeignKey: Book has no AuthorId property to point at, so EF
-            // creates a shadow "AuthorId" column instead of using a real one (MR001).
-            author.HasMany(x => x.Books).WithOne();
+            // Book.AuthorId is a real property, so this is a normal foreign key rather than a
+            // shadow one. Author owns Book, and Book isn't an aggregate root, so the default
+            // cascade delete here is the correct behavior, not an MR008 violation.
+            author.HasMany(x => x.Books)
+                .WithOne()
+                .HasForeignKey(x => x.AuthorId)
+                .HasConstraintName("fk_books_authors_author_id");
         });
 
         modelBuilder.Entity<Book>(book =>
         {
             book.ToTable("books");
-
-            // Well past PostgreSQL's 63-character limit. EF Core shortens the names it generates
-            // itself, but not one set explicitly like this - PostgreSQL would silently truncate it
-            // instead (MR009).
-            book.HasKey(x => x.Id)
-                .HasName("pk_books_with_an_excessively_long_primary_key_constraint_name_nobody_needs");
+            book.HasKey(x => x.Id).HasName("pk_books");
             book.Property(x => x.Id).HasColumnName("id");
+            book.Property(x => x.AuthorId).HasColumnName("author_id");
+            book.Property(x => x.Title).HasColumnName("title").HasMaxLength(300);
+            book.Property(x => x.Price).HasColumnName("price").HasPrecision(10, 2);
+            book.Property(x => x.Genre)
+                .HasColumnName("genre")
+                .HasConversion<string>()
+                .HasMaxLength(20);
+            book.Property(x => x.Isbn).HasColumnName("isbn").HasMaxLength(20);
 
-            // No HasMaxLength: falls back to the provider's default - unconstrained on
-            // PostgreSQL (MR004).
-            book.Property(x => x.Title).HasColumnName("title");
-
-            // No HasPrecision: falls back to the provider's default too (MR003).
-            book.Property(x => x.Price).HasColumnName("price");
-
-            // No HasConversion<string>: stored as its underlying number, so inserting a new value
-            // in the middle of the enum would silently change what every existing row means (MR006).
-            book.Property(x => x.Genre).HasColumnName("genre");
-
-            book.Property(x => x.Isbn)
-                .HasColumnName("ISBN") // Not snake_case (MR002).
-                .HasMaxLength(20)
-                .IsRequired(); // Isbn is `string?` in C#, but this makes the column NOT NULL (MR005).
+            book.HasIndex(x => x.AuthorId).HasDatabaseName("ix_books_author_id");
         });
 
         modelBuilder.Entity<Customer>(customer =>
@@ -82,19 +74,18 @@ public sealed class CatalogDbContext : DbContext
 
         modelBuilder.Entity<Order>(order =>
         {
-            // A different schema than the rest of the model's tables (MR007).
-            order.ToTable("orders", schema: "sales");
+            order.ToTable("orders");
             order.HasKey(x => x.Id).HasName("pk_orders");
             order.Property(x => x.Id).HasColumnName("id");
             order.Property(x => x.CustomerId).HasColumnName("customer_id");
 
-            // No OnDelete(...): EF Core defaults a required relationship to cascade, and Order and
-            // Customer are both aggregate roots, so deleting a customer would delete their orders
-            // too (MR008).
+            // Order and Customer are both aggregate roots, so this relationship is restricted
+            // rather than left to EF Core's default cascade (MR008).
             order.HasOne(x => x.Customer)
                 .WithMany(x => x.Orders)
                 .HasForeignKey(x => x.CustomerId)
-                .HasConstraintName("fk_orders_customers_customer_id");
+                .HasConstraintName("fk_orders_customers_customer_id")
+                .OnDelete(DeleteBehavior.Restrict);
 
             order.HasIndex(x => x.CustomerId).HasDatabaseName("ix_orders_customer_id");
         });

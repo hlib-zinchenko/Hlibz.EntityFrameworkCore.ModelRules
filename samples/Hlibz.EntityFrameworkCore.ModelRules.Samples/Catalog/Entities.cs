@@ -19,11 +19,11 @@ public sealed class Author : IAggregateRoot
     public List<Book> Books { get; } = [];
 }
 
-// Deliberately has no AuthorId property: CatalogDbContext relates it to Author with WithOne(), so
-// EF invents a shadow foreign key column instead of using a real one (MR001).
 public sealed class Book
 {
     public int Id { get; set; }
+
+    public int AuthorId { get; set; }
 
     public string Title { get; set; } = string.Empty;
 

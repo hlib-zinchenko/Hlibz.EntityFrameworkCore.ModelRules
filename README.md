@@ -95,11 +95,14 @@ public void Model_follows_rules()
 the context has no rules registered at all, so it can never pass by accident. Building a model
 never opens a connection, so the test needs no database.
 
-Want to see a violation report before wiring this into your own project?
-[`samples/`](samples/Hlibz.EntityFrameworkCore.ModelRules.Samples) has a small model that breaks
-every rule at least once:
+Want to see this against a real database before wiring it into your own project?
+[`samples/`](samples/Hlibz.EntityFrameworkCore.ModelRules.Samples) has a bookstore model that
+passes every rule, a Docker Compose PostgreSQL instance, and a checked-in migration - plus
+instructions for breaking a rule and watching `dotnet ef migrations add` fail with every violation
+listed:
 
 ```bash
+docker compose -f samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/docker-compose.yml up -d
 dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 ```
 
