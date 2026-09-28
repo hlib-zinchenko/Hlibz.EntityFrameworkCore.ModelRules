@@ -164,6 +164,126 @@ public sealed class ModelRulesBuilder
     }
 
     /// <summary>
+    /// MR010: every entity type assignable to <typeparamref name="TMarker"/> has a query filter,
+    /// e.g. every <c>ISoftDeletable</c> or <c>ITenantOwned</c> entity. Forgetting one on a new
+    /// entity type leaks soft-deleted rows, or another tenant's data, into every query. The filter
+    /// must be on the root of the entity type's hierarchy, since EF Core only applies it there.
+    /// </summary>
+    /// <remarks>
+    /// Checks that a filter exists, not what it filters: an entity type needing two filters (soft
+    /// delete and tenant) passes as long as it has one.
+    /// </remarks>
+    /// <typeparam name="TMarker">The marker type whose entity types need a filter.</typeparam>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder EntitiesHaveQueryFilter<TMarker>(
+        Action<ModelRuleExclusions>? except = null) =>
+        Add(
+            new EntitiesHaveQueryFilterRule(
+                type => typeof(TMarker).IsAssignableFrom(type),
+                $"implements {typeof(TMarker).Name}"),
+            except);
+
+    /// <summary>
+    /// MR010: every entity type <paramref name="requiresFilter"/> selects has a query filter, on
+    /// the root of its hierarchy.
+    /// </summary>
+    /// <param name="requiresFilter">Tells whether an entity CLR type needs a query filter.</param>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder EntitiesHaveQueryFilter(
+        Func<Type, bool> requiresFilter,
+        Action<ModelRuleExclusions>? except = null)
+    {
+        ArgumentNullException.ThrowIfNull(requiresFilter);
+        return Add(new EntitiesHaveQueryFilterRule(requiresFilter, "needs a query filter"), except);
+    }
+
+    /// <summary>
+    /// MR011: no relationship uses <c>DeleteBehavior.ClientSetNull</c> (EF Core's default for
+    /// optional relationships) or <c>DeleteBehavior.ClientCascade</c>. Both leave the database
+    /// constraint at NO ACTION and only affect dependents EF Core is tracking, so deleting a
+    /// principal whose dependents aren't loaded - or deleting from SQL or <c>ExecuteDelete</c> -
+    /// fails with a foreign key violation.
+    /// </summary>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder NoClientSideDeleteBehaviors(
+        Action<ModelRuleExclusions>? except = null) =>
+        Add(new NoClientSideDeleteBehaviorsRule(), except);
+
+    /// <summary>
+    /// MR012: no navigation leads from one aggregate root to another. Aggregates reference each
+    /// other by key only; a navigation such as <c>order.Customer</c> invites loading and changing
+    /// two aggregates in one unit of work. Navigations from a root to its own children are fine.
+    /// </summary>
+    /// <param name="isAggregateRoot">Tells whether an entity CLR type is an aggregate root.</param>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder NoNavigationsAcrossAggregates(
+        Func<Type, bool> isAggregateRoot,
+        Action<ModelRuleExclusions>? except = null)
+    {
+        ArgumentNullException.ThrowIfNull(isAggregateRoot);
+        return Add(new NoNavigationsAcrossAggregatesRule(isAggregateRoot), except);
+    }
+
+    /// <summary>
+    /// MR012: no navigation leads from one aggregate root to another, where an aggregate root is
+    /// any entity type assignable to <typeparamref name="TAggregateRoot"/>.
+    /// </summary>
+    /// <typeparam name="TAggregateRoot">The aggregate root marker type.</typeparam>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder NoNavigationsAcrossAggregates<TAggregateRoot>(
+        Action<ModelRuleExclusions>? except = null) =>
+        NoNavigationsAcrossAggregates(
+            type => typeof(TAggregateRoot).IsAssignableFrom(type),
+            except);
+
+    /// <summary>
+    /// MR013: every aggregate root has a concurrency token (a row version, PostgreSQL's
+    /// <c>xmin</c>, or any property marked <c>IsConcurrencyToken()</c>), so two requests updating
+    /// the same aggregate can't silently overwrite each other. In a hierarchy of roots, a token on
+    /// the topmost root covers every derived type.
+    /// </summary>
+    /// <param name="isAggregateRoot">Tells whether an entity CLR type is an aggregate root.</param>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder AggregateRootsHaveConcurrencyToken(
+        Func<Type, bool> isAggregateRoot,
+        Action<ModelRuleExclusions>? except = null)
+    {
+        ArgumentNullException.ThrowIfNull(isAggregateRoot);
+        return Add(new AggregateRootsHaveConcurrencyTokenRule(isAggregateRoot), except);
+    }
+
+    /// <summary>
+    /// MR013: every aggregate root has a concurrency token, where an aggregate root is any entity
+    /// type assignable to <typeparamref name="TAggregateRoot"/>.
+    /// </summary>
+    /// <typeparam name="TAggregateRoot">The aggregate root marker type.</typeparam>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder AggregateRootsHaveConcurrencyToken<TAggregateRoot>(
+        Action<ModelRuleExclusions>? except = null) =>
+        AggregateRootsHaveConcurrencyToken(
+            type => typeof(TAggregateRoot).IsAssignableFrom(type),
+            except);
+
+    /// <summary>
+    /// MR014: no index is made redundant by another index or key on the same table whose columns
+    /// start with the same columns in the same order, e.g. an index on <c>(customer_id)</c> next
+    /// to one on <c>(customer_id, created_at)</c>. Filtered indexes and indexes with
+    /// provider-specific settings are never compared, and a unique index only counts as redundant
+    /// when it duplicates another unique index or key exactly.
+    /// </summary>
+    /// <param name="except">Optional opt-outs for this rule.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ModelRulesBuilder NoRedundantIndexes(Action<ModelRuleExclusions>? except = null) =>
+        Add(new NoRedundantIndexesRule(), except);
+
+    /// <summary>
     /// Adds a custom rule.
     /// </summary>
     /// <param name="rule">The rule to add.</param>

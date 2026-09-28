@@ -2,6 +2,11 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Tests;
 
 public interface IAggregateRoot;
 
+public interface ISoftDeletable
+{
+    bool IsDeleted { get; }
+}
+
 public enum BlogStatus
 {
     Draft,
@@ -115,10 +120,10 @@ public sealed class Car : Vehicle
 }
 
 /// <summary>
-/// A TPC hierarchy: each concrete account gets a table of its own, with its own copies of the
-/// foreign key and index declared on the abstract base.
+/// A TPC hierarchy of aggregate roots: each concrete account gets a table of its own, with its
+/// own copies of the foreign key and index declared on the abstract base.
 /// </summary>
-public abstract class Account
+public abstract class Account : IAggregateRoot
 {
     public int Id { get; set; }
 
@@ -141,4 +146,42 @@ public sealed class CheckingAccount : Account
 public static class ReportFunctions
 {
     public static int OrderTotal(int orderId) => throw new NotSupportedException();
+}
+
+public sealed class Comment : ISoftDeletable
+{
+    public int Id { get; set; }
+
+    public bool IsDeleted { get; set; }
+}
+
+/// <summary>
+/// A TPH hierarchy where only the derived type is soft-deletable, so its filter has to go on a
+/// root that doesn't implement the marker itself.
+/// </summary>
+public class Note
+{
+    public int Id { get; set; }
+}
+
+public sealed class ArchivedNote : Note, ISoftDeletable
+{
+    public bool IsDeleted { get; set; }
+}
+
+/// <summary>
+/// Two aggregate roots in a many-to-many relationship, navigable from both sides.
+/// </summary>
+public sealed class Author : IAggregateRoot
+{
+    public int Id { get; set; }
+
+    public List<Book> Books { get; } = [];
+}
+
+public sealed class Book : IAggregateRoot
+{
+    public int Id { get; set; }
+
+    public List<Author> Authors { get; } = [];
 }

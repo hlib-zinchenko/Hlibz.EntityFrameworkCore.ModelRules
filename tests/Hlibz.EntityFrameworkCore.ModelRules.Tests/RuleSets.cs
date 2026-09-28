@@ -6,7 +6,8 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Tests;
 internal static class RuleSets
 {
     /// <summary>
-    /// Every built-in rule except MaxIdentifierLength, whose limit is provider-specific by design.
+    /// Every built-in rule except MaxIdentifierLength, whose limit is provider-specific by design,
+    /// and AggregateRootsHaveConcurrencyToken, since a row version's store type is too.
     /// </summary>
     public static void AllProviderNeutral(ModelRulesBuilder rules) =>
         rules
@@ -17,5 +18,9 @@ internal static class RuleSets
             .NullabilityMatchesClr()
             .EnumsStoredAsStrings()
             .SingleSchema()
-            .NoCascadeDeleteAcrossAggregates<IAggregateRoot>();
+            .NoCascadeDeleteAcrossAggregates<IAggregateRoot>()
+            .EntitiesHaveQueryFilter<ISoftDeletable>()
+            .NoClientSideDeleteBehaviors()
+            .NoNavigationsAcrossAggregates<IAggregateRoot>()
+            .NoRedundantIndexes();
 }

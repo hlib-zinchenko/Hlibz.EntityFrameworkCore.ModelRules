@@ -6,7 +6,8 @@ Guidance for Claude Code when working in this repository.
 
 A small NuGet package of declarative rules that check a finished EF Core model against a team's
 conventions (shadow properties, naming, decimal precision, string lengths, nullability, enum
-storage, schemas, cascade deletes between aggregate roots, identifier lengths). Rules run while EF
+storage, schemas, aggregate boundaries, query filters, delete behaviors, redundant indexes,
+identifier lengths). Rules run while EF
 builds the model (`UseModelRules` in `ConfigureConventions`) or from a test (`ModelRules.Verify`).
 
 ## Requires
@@ -64,7 +65,7 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   `IConventionModel` and the design-time `IModel`, so the same rule code runs in both places. Only
   use read-only metadata APIs in rules.
 - `Rules/` holds the built-in rules (`internal sealed`, one class each, `ModelRule` base with
-  id/name). IDs `MR001`–`MR009` are public contract: never renumber or reuse one.
+  id/name). IDs `MR001`–`MR014` are public contract: never renumber or reuse one.
 - `ModelRuleViolation` has two shapes. The entity constructor takes an entity type and member
   path. The target constructor is for things that aren't entity types (sequences, the model),
   and leaves `EntityClrType`, `EntityTypeName` and `MemberPath` null. Entity and member

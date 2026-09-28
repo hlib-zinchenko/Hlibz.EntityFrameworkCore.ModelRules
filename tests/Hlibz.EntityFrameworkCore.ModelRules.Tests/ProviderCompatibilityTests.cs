@@ -18,7 +18,9 @@ public sealed class ProviderCompatibilityTests
         string[] npgsql = Violations(ProblemModel, TestProvider.Npgsql);
         string[] actual = Violations(ProblemModel, provider);
 
-        Assert.NotEmpty(npgsql);
+        Assert.Equal(
+            ["MR001", "MR002", "MR003", "MR004", "MR005", "MR006", "MR007", "MR008", "MR010", "MR011", "MR012", "MR014"],
+            npgsql.Select(violation => violation.Split(' ')[0]).Distinct().Order(StringComparer.Ordinal));
         Assert.Equal(npgsql, actual);
     }
 
@@ -141,5 +143,7 @@ public sealed class ProviderCompatibilityTests
         Models.Countries(model);
         model.Entity<Blog>().Property(x => x.Subtitle).IsRequired();
         model.Entity<State>().ToTable("states", "geo");
+        model.Entity<State>().HasIndex(x => x.Id);
+        model.Entity<Comment>();
     }
 }

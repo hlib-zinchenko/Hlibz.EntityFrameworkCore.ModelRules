@@ -45,8 +45,8 @@ internal static class Models
 
     /// <summary>
     /// Passes every built-in rule: explicit snake_case names everywhere (a check constraint
-    /// included), precision and max lengths set, the enum stored as a string, and no cascade
-    /// between aggregate roots.
+    /// included), precision and max lengths set, the enum stored as a string, and aggregate roots
+    /// referring to each other by key only, with no cascade delete between them.
     /// </summary>
     public static void Clean(ModelBuilder model)
     {
@@ -77,6 +77,7 @@ internal static class Models
             currency.ToTable("currencies");
             currency.HasKey(x => x.Id).HasName("pk_currencies");
             currency.Property(x => x.Id).HasColumnName("id");
+            currency.Ignore(x => x.Countries);
         });
 
         model.Entity<Country>(country =>
@@ -86,8 +87,9 @@ internal static class Models
             country.Property(x => x.Id).HasColumnName("id");
             country.Property(x => x.CurrencyId).HasColumnName("currency_id");
             country.Ignore(x => x.States);
-            country.HasOne(x => x.Currency)
-                .WithMany(x => x.Countries)
+            country.Ignore(x => x.Currency);
+            country.HasOne<Currency>()
+                .WithMany()
                 .HasForeignKey(x => x.CurrencyId)
                 .HasConstraintName("fk_countries_currencies_currency_id")
                 .OnDelete(DeleteBehavior.Restrict);

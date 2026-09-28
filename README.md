@@ -11,7 +11,12 @@ unit test, when an entity breaks one:
   matches the column's nullability.
 - **Enums stored as strings.**
 - **One schema per DbContext.** Useful in a modular monolith.
-- **No cascade deletes across aggregate roots.**
+- **Aggregate boundaries.** Aggregate roots refer to each other by key only, never delete each
+  other by cascade, and each has a concurrency token.
+- **Query filters.** Every soft-deletable or tenant-owned entity has one.
+- **Delete behaviors the database enforces.** No `ClientSetNull` or `ClientCascade`, which only
+  affect entities EF Core happens to be tracking.
+- **No redundant indexes.**
 - **Identifier length.** No table, column or constraint name is longer than your database allows.
 
 [![CI](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml/badge.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml)
@@ -121,6 +126,11 @@ dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 | MR007 | `SingleSchema(schema?)` | Every table, view, sequence and database function is in `schema`. Without a schema, everything uses the schema most tables already use. |
 | MR008 | `NoCascadeDeleteAcrossAggregates(isRoot)` | No relationship between two aggregate roots deletes by cascade. Identify roots with a marker type (`<IAggregateRoot>`) or a predicate. |
 | MR009 | `MaxIdentifierLength(max, scope)` | No identifier is longer than the database allows: 63 on PostgreSQL, 128 on SQL Server. EF Core shortens the names it generates, and sequence names, but not other names you configure explicitly. |
+| MR010 | `EntitiesHaveQueryFilter<TMarker>()` | Every entity type implementing the marker (e.g. `ISoftDeletable` or `ITenantOwned`) has a query filter, on the root of its hierarchy. |
+| MR011 | `NoClientSideDeleteBehaviors()` | No relationship uses `ClientSetNull` (EF Core's default for optional relationships) or `ClientCascade`. Both leave the database constraint at NO ACTION, so deleting a principal fails whenever its dependents aren't loaded. |
+| MR012 | `NoNavigationsAcrossAggregates(isRoot)` | No navigation leads from one aggregate root to another. Roots refer to each other by key. |
+| MR013 | `AggregateRootsHaveConcurrencyToken(isRoot)` | Every aggregate root has a row version or another concurrency token. |
+| MR014 | `NoRedundantIndexes()` | No index is a leading prefix of another index or key on the same table. Filtered indexes and indexes with provider-specific settings are skipped. |
 
 A few details:
 
@@ -142,6 +152,22 @@ A few details:
 - **JSON columns are skipped by the column facet rules.** That covers owned types mapped with
   `ToJson()` and JSON complex types on EF Core 10. Their properties aren't columns. Naming still
   checks the JSON container column itself.
+- **MR011 fires on every optional relationship you haven't configured**, because
+  `ClientSetNull` is EF Core's default. To switch them all at once, at the end of
+  `OnModelCreating`:
+
+  ```csharp
+  foreach (IMutableForeignKey foreignKey in modelBuilder.Model.GetEntityTypes()
+      .SelectMany(entityType => entityType.GetDeclaredForeignKeys())
+      .Where(foreignKey => foreignKey.DeleteBehavior == DeleteBehavior.ClientSetNull))
+  {
+      foreignKey.DeleteBehavior = DeleteBehavior.SetNull;   // or Restrict
+  }
+  ```
+
+  SQL Server rejects `SetNull` where it would create multiple cascade paths; use `Restrict` there.
+- **MR010 checks that a filter exists, not what it filters.** An entity type that needs two
+  (soft delete and tenant) passes with one.
 - **An explicit column type counts as a deliberate choice.** For example, `HasColumnType("text")`
   satisfies MR004.
 
