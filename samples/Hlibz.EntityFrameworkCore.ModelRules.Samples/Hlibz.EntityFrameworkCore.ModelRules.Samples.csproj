@@ -2,9 +2,14 @@
 
   <!--
     A runnable demo, not a library: only net10.0, no reason to build and test it three times over.
+    Singular TargetFramework, not TargetFrameworks: with the plural property `dotnet ef` fails with
+    "MSB4057: The target 'ResolvePackageAssets' does not exist" unless every command also passes a
+    "framework" option naming net10.0.
   -->
   <PropertyGroup>
-    <TargetFrameworks>net10.0</TargetFrameworks>
+    <!-- Clears the net8.0;net9.0;net10.0 that Directory.Build.props sets for every project. -->
+    <TargetFrameworks />
+    <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

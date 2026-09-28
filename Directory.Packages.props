@@ -10,6 +10,13 @@
         <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
         <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
         <PackageVersion Include="xunit.v3" Version="4.0.1" />
+        <!--
+            Samples-only: design-time tooling for `dotnet ef`. Unconditioned, not per-TFM like the
+            EF Core packages below, because the samples project is single-targeted (net10.0 only,
+            via its own TargetFramework), and its TargetFramework isn't set yet when a per-TFM
+            Condition here would need to see it.
+        -->
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     </ItemGroup>
 
     <!--
@@ -44,7 +51,5 @@
         <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.12" />
         <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.9" />
-        <!-- Samples-only: design-time tooling for `dotnet ef`, so it isn't needed by the library. -->
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     </ItemGroup>
 </Project>
