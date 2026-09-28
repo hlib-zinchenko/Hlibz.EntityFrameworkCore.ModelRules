@@ -13,7 +13,7 @@ public sealed class NoClientSideDeleteBehaviorsTests
         Assert.Equal("MR011", violation.RuleId);
         Assert.Equal("Post.BlogId", violation.Target);
         Assert.Equal(
-            "deleting a Blog sets the foreign key to null only on Post rows EF Core is tracking; "
+            "deleting Blog rows sets the foreign key to null only on Post rows EF Core is tracking; "
             + "the database constraint does nothing, so the delete fails when any other row "
             + "still refers to it. Configure OnDelete(DeleteBehavior.SetNull), or "
             + "OnDelete(DeleteBehavior.Restrict) to forbid it.",

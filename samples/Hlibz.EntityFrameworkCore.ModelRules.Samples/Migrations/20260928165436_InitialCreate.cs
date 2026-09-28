@@ -21,7 +21,8 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,7 +36,8 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false)
+                    email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -53,7 +55,8 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                     title = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     price = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
                     genre = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    isbn = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true)
+                    isbn = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -74,7 +77,8 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    customer_id = table.Column<int>(type: "integer", nullable: false)
+                    customer_id = table.Column<int>(type: "integer", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

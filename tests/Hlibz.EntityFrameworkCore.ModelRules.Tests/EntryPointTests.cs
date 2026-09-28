@@ -20,7 +20,7 @@ public sealed class EntryPointTests
         Assert.Equal(
             """
             The EF Core model has 3 model rule violations:
-              - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a 'BlogId' property to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
+              - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a property named 'BlogId' to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
             """,
             string.Join(Environment.NewLine, exception.Message.Split(Environment.NewLine).Take(2)));
     }

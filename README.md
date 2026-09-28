@@ -26,9 +26,9 @@ unit test, when an entity breaks one:
 
 ```text
 Hlibz.EntityFrameworkCore.ModelRules.ModelRuleViolationException: The EF Core model has 3 model rule violations:
-  - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a 'BlogId' property to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
+  - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a property named 'BlogId' to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
   - MR003 DecimalsHavePrecision: Currency.UsdRate: decimal column has no precision, so its store type falls back to the provider's default (unconstrained numeric on PostgreSQL, decimal(18,2) with silent truncation on SQL Server). Configure HasPrecision(precision, scale).
-  - MR008 NoCascadeDeleteAcrossAggregates: Country.Currency: deleting a Currency cascades to Country, a separate aggregate root. Configure OnDelete(DeleteBehavior.Restrict) (or SetNull for an optional relationship).
+  - MR008 NoCascadeDeleteAcrossAggregates: Country.Currency: deleting Currency rows cascades to Country, a separate aggregate root. Configure OnDelete(DeleteBehavior.Restrict) (or SetNull for an optional relationship).
 ```
 
 ## Why
@@ -78,9 +78,19 @@ protected override void ConfigureConventions(ModelConfigurationBuilder configura
         .EnumsStoredAsStrings()
         .SingleSchema("billing")
         .NoCascadeDeleteAcrossAggregates<IAggregateRoot>()
-        .MaxIdentifierLength(63));
+        .MaxIdentifierLength(63)
+        .EntitiesHaveQueryFilter<ISoftDeletable>()
+        .NoClientSideDeleteBehaviors()
+        .NoNavigationsAcrossAggregates<IAggregateRoot>()
+        .AggregateRootsHaveConcurrencyToken<IAggregateRoot>()
+        .NoRedundantIndexes());
 }
 ```
+
+Pick the rules that match your conventions; each one is independent. `IAggregateRoot` and
+`ISoftDeletable` stand for your own marker types. Every rule that takes one also accepts a
+`Func<Type, bool>` predicate instead, for roots a marker can't express, such as types deriving
+from a generic `AggregateRoot<TId>` base class.
 
 The rules run every time EF Core builds the model: once per process on first use of the context,
 and whenever `dotnet ef migrations add` builds it. A broken rule throws a
@@ -273,6 +283,21 @@ builds the design-time model, which is why the test is worth keeping.
 - Some rules mean less on some databases. SQLite ignores precision, max length and schemas.
   MySQL always names a primary key `PRIMARY`, whatever MR002 checked in the model. MR009's limit
   is yours to pick: 63 on PostgreSQL, 64 on MySQL, 128 on SQL Server.
+
+## Versioning
+
+The package follows [semantic versioning](https://semver.org), and rule IDs are permanent: an ID
+is never renumbered or reused.
+
+A rule you register keeps improving, so a minor or patch release may make it report violations
+it missed before, such as a kind of identifier `NamingScope.All` didn't cover yet. The fix is
+always to follow the rule, or exclude the case. What only a major version may do:
+
+- remove or rename public API, or change a rule ID's meaning;
+- make a rule reject a model that follows the convention it states;
+- change what a rule requires, e.g. tighten what counts as a valid snake_case name.
+
+New rules are always opt-in: nothing starts checking your model until you register it.
 
 ## License
 

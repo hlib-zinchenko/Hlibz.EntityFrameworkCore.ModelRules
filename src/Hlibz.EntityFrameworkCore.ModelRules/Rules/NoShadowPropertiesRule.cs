@@ -29,8 +29,8 @@ internal sealed class NoShadowPropertiesRule() : ModelRule("MR001", "NoShadowPro
                 string message = property.GetContainingForeignKeys()
                     .FirstOrDefault() is { } foreignKey
                     ? $"shadow foreign key created by convention for the relationship to "
-                      + $"{foreignKey.PrincipalEntityType.DisplayName()}. Add a '{property.Name}' "
-                      + "property to the entity, or configure the relationship with "
+                      + $"{foreignKey.PrincipalEntityType.DisplayName()}. Add a property named "
+                      + $"'{property.Name}' to the entity, or configure the relationship with "
                       + "HasForeignKey(...) pointing at an existing one."
                     : $"shadow property '{property.Name}' has no CLR property or field behind it. "
                       + "Map a real member instead.";

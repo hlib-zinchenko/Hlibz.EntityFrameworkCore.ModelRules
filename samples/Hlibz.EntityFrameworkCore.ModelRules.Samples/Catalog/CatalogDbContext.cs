@@ -25,7 +25,12 @@ public sealed class CatalogDbContext : DbContext
             .EnumsStoredAsStrings()
             .SingleSchema("catalog")
             .NoCascadeDeleteAcrossAggregates<IAggregateRoot>()
-            .MaxIdentifierLength(63));
+            .MaxIdentifierLength(63)
+            .EntitiesHaveQueryFilter<ISoftDeletable>()
+            .NoClientSideDeleteBehaviors()
+            .NoNavigationsAcrossAggregates<IAggregateRoot>()
+            .AggregateRootsHaveConcurrencyToken<IAggregateRoot>()
+            .NoRedundantIndexes());
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +42,7 @@ public sealed class CatalogDbContext : DbContext
             author.HasKey(x => x.Id).HasName("pk_authors");
             author.Property(x => x.Id).HasColumnName("id");
             author.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
+            author.Property(x => x.Version).IsRowVersion();
 
             // Book.AuthorId is a real property, so this is a normal foreign key rather than a
             // shadow one. Author owns Book, and Book isn't an aggregate root, so the default
@@ -60,6 +66,8 @@ public sealed class CatalogDbContext : DbContext
                 .HasConversion<string>()
                 .HasMaxLength(20);
             book.Property(x => x.Isbn).HasColumnName("isbn").HasMaxLength(20);
+            book.Property(x => x.IsDeleted).HasColumnName("is_deleted");
+            book.HasQueryFilter(x => !x.IsDeleted);
 
             book.HasIndex(x => x.AuthorId).HasDatabaseName("ix_books_author_id");
         });
@@ -70,6 +78,7 @@ public sealed class CatalogDbContext : DbContext
             customer.HasKey(x => x.Id).HasName("pk_customers");
             customer.Property(x => x.Id).HasColumnName("id");
             customer.Property(x => x.Email).HasColumnName("email").HasMaxLength(320);
+            customer.Property(x => x.Version).IsRowVersion();
         });
 
         modelBuilder.Entity<Order>(order =>
@@ -78,11 +87,12 @@ public sealed class CatalogDbContext : DbContext
             order.HasKey(x => x.Id).HasName("pk_orders");
             order.Property(x => x.Id).HasColumnName("id");
             order.Property(x => x.CustomerId).HasColumnName("customer_id");
+            order.Property(x => x.Version).IsRowVersion();
 
-            // Order and Customer are both aggregate roots, so this relationship is restricted
-            // rather than left to EF Core's default cascade (MR008).
-            order.HasOne(x => x.Customer)
-                .WithMany(x => x.Orders)
+            // Order and Customer are both aggregate roots, so the relationship has no navigations
+            // (MR012) and is restricted rather than left to EF Core's default cascade (MR008).
+            order.HasOne<Customer>()
+                .WithMany()
                 .HasForeignKey(x => x.CustomerId)
                 .HasConstraintName("fk_orders_customers_customer_id")
                 .OnDelete(DeleteBehavior.Restrict);

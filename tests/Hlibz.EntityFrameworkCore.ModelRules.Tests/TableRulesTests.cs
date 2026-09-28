@@ -108,7 +108,7 @@ public sealed class TableRulesTests
         Assert.Equal("MR008", violation.RuleId);
         Assert.Equal("Country.Currency", violation.Target);
         Assert.StartsWith(
-            "deleting a Currency cascades to Country",
+            "deleting Currency rows cascades to Country",
             violation.Message,
             StringComparison.Ordinal);
     }

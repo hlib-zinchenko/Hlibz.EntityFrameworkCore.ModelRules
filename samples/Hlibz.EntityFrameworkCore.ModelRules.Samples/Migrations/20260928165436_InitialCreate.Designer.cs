@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    [Migration("20260928132213_InitialCreate")]
+    [Migration("20260928165436_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -40,6 +40,12 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_authors");
 
@@ -64,6 +70,10 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("genre");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Isbn")
                         .HasMaxLength(20)
@@ -105,6 +115,12 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_customers");
 
@@ -123,6 +139,12 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer")
                         .HasColumnName("customer_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_orders");
@@ -145,24 +167,17 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Migrations
 
             modelBuilder.Entity("Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog.Order", b =>
                 {
-                    b.HasOne("Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog.Customer", "Customer")
-                        .WithMany("Orders")
+                    b.HasOne("Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog.Customer", null)
+                        .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_orders_customers_customer_id");
-
-                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog.Author", b =>
                 {
                     b.Navigation("Books");
-                });
-
-            modelBuilder.Entity("Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog.Customer", b =>
-                {
-                    b.Navigation("Orders");
                 });
 #pragma warning restore 612, 618
         }

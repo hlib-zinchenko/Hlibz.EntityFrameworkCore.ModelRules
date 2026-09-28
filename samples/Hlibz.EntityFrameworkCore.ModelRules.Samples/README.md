@@ -2,9 +2,10 @@
 
 `CatalogDbContext` (`Author`, `Book`, `Customer`, `Order` in `Catalog/`) is registered with every
 built-in rule and follows every one of them: snake_case names, decimal precision, string max
-lengths, C# nullability matching column nullability, the enum stored as a string, one schema, no
-cascade delete between `Order` and `Customer` (both aggregate roots), and no identifier over 63
-characters. `Migrations/InitialCreate` is the migration that model produces, and
+lengths, C# nullability matching column nullability, the enum stored as a string, one schema, and
+no identifier over 63 characters. `Order` and `Customer` are both aggregate roots, so `Order`
+refers to its customer by `CustomerId` only, with no navigation and no cascade delete. Every root
+has a row version (PostgreSQL's `xmin`), and the soft-deletable `Book` has a query filter. `Migrations/InitialCreate` is the migration that model produces, and
 `docker-compose.yml` runs the PostgreSQL it targets.
 
 This sample exists to show that the rules don't just run at `dotnet run`: they run at
@@ -57,11 +58,16 @@ No `BrokenDemo` migration file gets written - `dotnet ef migrations list` still 
 `InitialCreate`. Put the two fixes back (or `git checkout` the file) and both `dotnet run` and
 `dotnet ef migrations add` are clean again.
 
-Worth trying too: revert the `AuthorId` property on `Book` back to nothing, so EF Core has to
-invent a shadow foreign key again. One missing property, but the shadow column, its foreign key and
-its index are all named in EF's own PascalCase, so it trips MR001 once and MR002 three more times -
+Also worth trying: give `Order` a `Customer` navigation and configure the relationship with
+`HasOne(x => x.Customer)`. MR012 reports it, because it lets one unit of work load and change two
+aggregates.
+
+Or remove the `AuthorId` property from `Book`, along with the lines that configure it, so EF Core
+has to invent a shadow foreign key. One missing property, but the shadow column, its foreign key
+and its index are all named in EF's own PascalCase, so it trips MR001 once and MR002 three times -
 a good illustration of why NoShadowProperties exists: a shadow property never goes through the
-naming convention the rest of the model follows.
+naming convention the rest of the model follows. MR011 fires too: the invented key is optional,
+so it gets EF Core's `ClientSetNull` delete behavior.
 
 ## Requires
 

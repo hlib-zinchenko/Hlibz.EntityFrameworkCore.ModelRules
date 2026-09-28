@@ -40,7 +40,7 @@ internal sealed class NoClientSideDeleteBehaviorsRule()
                     entityType,
                     foreignKey.DependentToPrincipal?.Name
                     ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name)),
-                    $"deleting a {principal} {effect}; the database constraint does nothing, so "
+                    $"deleting {principal} rows {effect}; the database constraint does nothing, so "
                     + "the delete fails when any other row still refers to it. Configure "
                     + $"{fix}, or OnDelete(DeleteBehavior.Restrict) to forbid it.");
             }

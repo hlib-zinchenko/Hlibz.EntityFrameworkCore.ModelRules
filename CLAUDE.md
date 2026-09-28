@@ -114,9 +114,33 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   `RuleSets.cs`) rather than duplicated. CI runs it as a separate `integration-tests` job; the
   release workflow doesn't run it.
 
+- `samples/Hlibz.EntityFrameworkCore.ModelRules.Samples` (net10.0 only, not packable) registers
+  every built-in rule and must keep passing all of them; `dotnet run` on it verifies the model
+  without a database. When its model changes, regenerate the checked-in migration rather than
+  stacking a second one: delete `Migrations/`, then run `dotnet ef migrations add InitialCreate`
+  with `--project` and `--startup-project` both pointing at the sample. Its Compose PostgreSQL
+  listens on host port 5433, which may be the user's own running instance; to try a migration
+  elsewhere, pass `dotnet ef database update --connection "..."`.
+
+## Adding a rule
+
+1. Take the next free ID (never reuse one) and add an `internal sealed` class in `Rules/`.
+2. Add the `ModelRulesBuilder` method(s) with XML docs; rules that take a marker type get a
+   `Func<Type, bool>` overload too.
+3. Tests in the unit test project, named `Subject_WithCondition_ExpectedOutcome`.
+4. If the rule is provider-neutral, add it to `RuleSets.AllProviderNeutral` and make
+   `ProviderCompatibilityTests.ProblemModel` break it; that test asserts every rule in the set
+   fires. `Models.Clean` must still pass, since the integration tests build it on real databases.
+5. README: the feature list, the rules table, and the quick start. Register it in the sample,
+   keep the sample passing, and update CLAUDE.md's rule ID range.
+
 ## Releasing
 
-`.github/workflows/release.yml` runs on a pushed `vX.Y.Z` tag. It builds and tests, packs
+Versions follow the policy in README's "Versioning" section: rule IDs are permanent, a rule may
+report more in a minor or patch release, and new rules are opt-in.
+
+`.github/workflows/release.yml` runs on a pushed `vX.Y.Z` tag (or `vX.Y.Z-preview.N`, which
+publishes a prerelease). It builds and tests, packs
 `src/Hlibz.EntityFrameworkCore.ModelRules` with `-p:Version` taken from the tag, and publishes
 via NuGet Trusted Publishing (OIDC, no API key; see
 https://learn.microsoft.com/nuget/nuget-org/trusted-publishing). The job uses the `release` GitHub

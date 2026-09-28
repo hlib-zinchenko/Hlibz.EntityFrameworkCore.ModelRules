@@ -30,7 +30,7 @@ internal sealed class NoCascadeDeleteAcrossAggregatesRule(Func<Type, bool> isAgg
                     entityType,
                     foreignKey.DependentToPrincipal?.Name
                     ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name)),
-                    $"deleting a {foreignKey.PrincipalEntityType.DisplayName()} cascades to "
+                    $"deleting {foreignKey.PrincipalEntityType.DisplayName()} rows cascades to "
                     + $"{entityType.DisplayName()}, a separate aggregate root. Configure "
                     + "OnDelete(DeleteBehavior.Restrict) (or SetNull for an optional "
                     + "relationship).");
