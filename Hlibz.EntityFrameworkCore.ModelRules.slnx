@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/Hlibz.EntityFrameworkCore.ModelRules.Samples.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Hlibz.EntityFrameworkCore.ModelRules/Hlibz.EntityFrameworkCore.ModelRules.csproj" />
   </Folder>
