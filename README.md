@@ -105,7 +105,9 @@ from a generic `AggregateRoot<TId>` base class.
 
 The rules run every time EF Core builds the model: once per process on first use of the context,
 and whenever `dotnet ef migrations add` builds it. A broken rule throws a
-`ModelRuleViolationException` that lists every violation, not just the first.
+`ModelRuleViolationException` that lists every violation, not just the first. A context that
+loads a [compiled model](#how-it-works) never builds one at runtime, so there the rules only run
+from the test below.
 
 Then add one test, so a violation fails CI rather than an app startup:
 
@@ -138,6 +140,10 @@ private static DbContextOptions<TContext> Options<TContext>()
         .UseSnakeCaseNamingConvention()
         .Options;
 ```
+
+If the tests already build the app's service provider, resolve each context from it instead,
+with the same dependencies as the app:
+`() => scope.ServiceProvider.GetRequiredService<BillingDbContext>()`.
 
 A context whose constructor takes only its options can also be passed as just the options:
 `ModelRuleVerifier.Verify(Options<ShippingDbContext>())`, or several at once with `VerifyAll`.
@@ -176,6 +182,25 @@ dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 | MR012 | `NoNavigationsAcrossAggregates(isRoot)` | No navigation leads from one aggregate root to another. Roots refer to each other by key. |
 | MR013 | `AggregateRootsHaveConcurrencyToken(isRoot)` | Every aggregate root has a row version or another concurrency token. |
 | MR014 | `NoRedundantIndexes()` | No index is a leading prefix of another index or key on the same table. Filtered indexes and indexes with provider-specific settings are skipped. |
+
+What each rule reports, one example per rule:
+
+```text
+MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a property named 'BlogId' to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
+MR002 NamesFollow: Post.BlogId: foreign key name 'FK_Post_Blog_BlogId' is not snake_case.
+MR003 DecimalsHavePrecision: Blog.Rating: decimal column has no precision, so its store type falls back to the provider's default (unconstrained numeric on PostgreSQL, decimal(18,2) with silent truncation on SQL Server). Configure HasPrecision(precision, scale).
+MR004 StringsHaveMaxLength: Post.Title: string column has no max length. Configure HasMaxLength(...), or HasColumnType(...) if an unbounded type is intended.
+MR005 NullabilityMatchesClr: Blog.Subtitle: C# type is nullable but the column is NOT NULL. Make the C# type non-nullable, or remove IsRequired().
+MR006 EnumsStoredAsStrings: Blog.Status: enum BlogStatus is stored as its underlying number. Configure HasConversion<string>(), or convert every enum at once with configurationBuilder.Properties<Enum>().HaveConversion<string>().
+MR007 SingleSchema: State: mapped to schema 'geo', but the model's tables belong in 'billing'.
+MR008 NoCascadeDeleteAcrossAggregates: Country.Currency: deleting Currency rows cascades to Country, a separate aggregate root. Configure OnDelete(DeleteBehavior.Restrict) (or SetNull for an optional relationship).
+MR009 MaxIdentifierLength: Country.Currency: foreign key name 'FK_Country_Currency_CurrencyId' is 30 characters long; the limit is 12.
+MR010 EntitiesHaveQueryFilter: Comment: implements ISoftDeletable but has no query filter. Configure HasQueryFilter(...).
+MR011 NoClientSideDeleteBehaviors: Post.BlogId: deleting Blog rows sets the foreign key to null only on Post rows EF Core is tracking; the database constraint does nothing, so the delete fails when any other row still refers to it. Configure OnDelete(DeleteBehavior.SetNull), or OnDelete(DeleteBehavior.Restrict) to forbid it.
+MR012 NoNavigationsAcrossAggregates: Country.Currency: navigation to Currency, a separate aggregate root. Reference it by key only: keep the foreign key property, remove the navigation, and load Currency through its own repository.
+MR013 AggregateRootsHaveConcurrencyToken: Country: aggregate root has no concurrency token, so concurrent updates silently overwrite each other. Add a row version (IsRowVersion(), or xmin on PostgreSQL), or mark a property IsConcurrencyToken().
+MR014 NoRedundantIndexes: State.Id: index 'IX_states_Id' (Id) has the same columns as primary key 'PK_states' (Id), which serves the same lookups. Remove it.
+```
 
 A few details:
 
@@ -294,8 +319,10 @@ Core's public read-only metadata API (`IReadOnlyModel`), so a rule sees the same
 runs at startup or from `ModelRuleVerifier.Verify`.
 
 **Compiled models.** A context that uses a compiled model (`dotnet ef dbcontext optimize`) never
-builds its model at runtime, so the startup check never runs. `ModelRuleVerifier.Verify(context)` still
-builds the design-time model, which is why the test is worth keeping.
+builds its model at runtime, so conventions don't run and the rules never fire at startup.
+`ModelRuleVerifier.Verify(context)` still builds the design-time model, which runs them, so with
+a compiled model the test is where the rules are enforced. `dotnet ef dbcontext optimize` and
+`migrations add` also build the design-time model, so they fail on a broken rule too.
 
 ## Compatibility
 
