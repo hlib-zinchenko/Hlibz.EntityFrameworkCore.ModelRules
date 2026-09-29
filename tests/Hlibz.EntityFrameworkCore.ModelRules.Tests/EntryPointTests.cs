@@ -52,6 +52,23 @@ public sealed class EntryPointTests
     }
 
     [Fact]
+    public void UseModelRules_CalledTwice_ReportsViolationsOfBothRuleSetsAtOnce()
+    {
+        using TestDbContext context = new(
+            Models.Blog,
+            conventions => conventions
+                .UseModelRules(rules => rules.NoShadowProperties())
+                .UseModelRules(rules => rules.DecimalsHavePrecision()));
+
+        ModelRuleViolationException exception =
+            Assert.Throws<ModelRuleViolationException>(() => context.Model);
+
+        Assert.Equal(
+            ["MR001", "MR003", "MR003"],
+            exception.Violations.Select(violation => violation.RuleId));
+    }
+
+    [Fact]
     public void Verify_WithPassingRegisteredRules_DoesNotThrow()
     {
         using TestDbContext context = new(

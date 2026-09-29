@@ -33,18 +33,26 @@ public sealed class ModelRulesBuilder
     /// <summary>
     /// MR002: every database identifier in <paramref name="scope"/> - schemas, tables, views,
     /// columns (complex-type columns included), key, foreign key, index and check constraint
-    /// names, sequences and database functions - matches <paramref name="style"/>. Checks the final names, however they were produced (a naming
-    /// convention plugin, <c>HasColumnName</c>, EF defaults).
+    /// names, sequences and database functions - matches <paramref name="style"/>. Checks the
+    /// final names, however they were produced (a naming convention plugin,
+    /// <c>HasColumnName</c>, EF defaults).
     /// </summary>
     /// <param name="style">The naming style every identifier must match.</param>
     /// <param name="scope">Which kinds of identifiers to check.</param>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="style"/> isn't a defined value, or <paramref name="scope"/> is
+    /// <see cref="NamingScope.None"/>.
+    /// </exception>
     public ModelRulesBuilder NamesFollow(
         NamingStyle style,
         NamingScope scope = NamingScope.All,
-        Action<ModelRuleExclusions>? except = null) =>
-        Add(NamesFollowRule.For(style, scope), except);
+        Action<ModelRuleExclusions>? except = null)
+    {
+        ThrowIfNone(scope);
+        return Add(NamesFollowRule.For(style, scope), except);
+    }
 
     /// <summary>
     /// MR002: every database identifier in <paramref name="scope"/> matches a custom
@@ -54,12 +62,16 @@ public sealed class ModelRulesBuilder
     /// <param name="scope">Which kinds of identifiers to check.</param>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="scope"/> is <see cref="NamingScope.None"/>.
+    /// </exception>
     public ModelRulesBuilder NamesFollow(
         Regex pattern,
         NamingScope scope = NamingScope.All,
         Action<ModelRuleExclusions>? except = null)
     {
         ArgumentNullException.ThrowIfNull(pattern);
+        ThrowIfNone(scope);
         return Add(new NamesFollowRule(pattern, $"matching /{pattern}/", scope), except);
     }
 
@@ -94,8 +106,17 @@ public sealed class ModelRulesBuilder
         Add(new NullabilityMatchesClrRule(), except);
 
     /// <summary>
-    /// MR006: every enum property is stored as a string rather than its underlying number.
+    /// MR006: every enum property is stored as a string rather than its underlying number, and
+    /// so is every element of a primitive collection of enums (<c>List&lt;Status&gt;</c>,
+    /// <c>Status[]</c>), in a column or inside a JSON document (<c>ToJson()</c>). An enum the
+    /// provider maps to a database enum type, such as a PostgreSQL enum, passes, except a single
+    /// enum inside a JSON owned type, which Npgsql writes as a number.
     /// </summary>
+    /// <remarks>
+    /// <c>configurationBuilder.Properties&lt;Enum&gt;().HaveConversion&lt;string&gt;()</c>
+    /// converts enum properties but not collection elements; convert those with
+    /// <c>PrimitiveCollection(x =&gt; x.Statuses).ElementType().HasConversion&lt;string&gt;()</c>.
+    /// </remarks>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>
     public ModelRulesBuilder EnumsStoredAsStrings(Action<ModelRuleExclusions>? except = null) =>
@@ -106,14 +127,30 @@ public sealed class ModelRulesBuilder
     /// <paramref name="schema"/>, that schema; without it, whichever schema most tables already
     /// use.
     /// </summary>
+    /// <remarks>
+    /// A table with no schema of its own is in the model's default schema
+    /// (<c>HasDefaultSchema</c>). Without one, the database's default applies (<c>dbo</c>,
+    /// <c>public</c>), which the model doesn't name, so <c>SingleSchema("dbo")</c> needs
+    /// <c>modelBuilder.HasDefaultSchema("dbo")</c>.
+    /// </remarks>
     /// <param name="schema">The schema every table must use, or <see langword="null"/> to only
     /// require that they all agree.</param>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="schema"/> is empty or whitespace.
+    /// </exception>
     public ModelRulesBuilder SingleSchema(
         string? schema = null,
-        Action<ModelRuleExclusions>? except = null) =>
-        Add(new SingleSchemaRule(schema), except);
+        Action<ModelRuleExclusions>? except = null)
+    {
+        if (schema is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(schema);
+        }
+
+        return Add(new SingleSchemaRule(schema), except);
+    }
 
     /// <summary>
     /// MR008: no relationship between two aggregate roots deletes by cascade. EF Core cascades
@@ -154,12 +191,17 @@ public sealed class ModelRulesBuilder
     /// <param name="scope">Which kinds of identifiers to check.</param>
     /// <param name="except">Optional opt-outs for this rule.</param>
     /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="maxLength"/> isn't positive, or <paramref name="scope"/> is
+    /// <see cref="NamingScope.None"/>.
+    /// </exception>
     public ModelRulesBuilder MaxIdentifierLength(
         int maxLength,
         NamingScope scope = NamingScope.All,
         Action<ModelRuleExclusions>? except = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxLength);
+        ThrowIfNone(scope);
         return Add(new MaxIdentifierLengthRule(maxLength, scope), except);
     }
 
@@ -309,6 +351,21 @@ public sealed class ModelRulesBuilder
         ArgumentNullException.ThrowIfNull(except);
         except(_globalExclusions);
         return this;
+    }
+
+    /// <summary>
+    /// A rule with no identifiers in scope could never report anything, so it would pass
+    /// without checking the model.
+    /// </summary>
+    private static void ThrowIfNone(NamingScope scope)
+    {
+        if (scope == NamingScope.None)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(scope),
+                scope,
+                "The scope has no kinds of identifiers in it, so the rule would check nothing.");
+        }
     }
 
     internal static ModelRuleSet Build(Action<ModelRulesBuilder> configure)

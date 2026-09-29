@@ -1,3 +1,5 @@
+using Hlibz.EntityFrameworkCore.ModelRules.Internal;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -18,6 +20,7 @@ internal sealed class NoCascadeDeleteAcrossAggregatesRule(Func<Type, bool> isAgg
             foreach (IReadOnlyForeignKey foreignKey in entityType.GetDeclaredForeignKeys())
             {
                 if (foreignKey.IsOwnership
+                    || ModelWalker.IsMappingLink(foreignKey)
                     || foreignKey.DeleteBehavior is not (DeleteBehavior.Cascade
                         or DeleteBehavior.ClientCascade)
                     || !isAggregateRoot(foreignKey.PrincipalEntityType.ClrType)

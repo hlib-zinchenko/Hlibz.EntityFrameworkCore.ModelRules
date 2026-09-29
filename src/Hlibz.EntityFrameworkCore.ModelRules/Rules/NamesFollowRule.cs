@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 namespace Hlibz.EntityFrameworkCore.ModelRules.Rules;
 
 /// <summary>
-/// MR002: every database identifier in scope matches a naming style.
+/// MR002: every database identifier in scope matches a naming style. The built-in styles end
+/// with <c>\z</c> rather than <c>$</c>, which would also accept a trailing newline.
 /// </summary>
 internal sealed class NamesFollowRule(Regex pattern, string styleName, NamingScope scope)
     : ModelRule("MR002", "NamesFollow")
@@ -16,23 +17,23 @@ internal sealed class NamesFollowRule(Regex pattern, string styleName, NamingSco
         style switch
         {
             NamingStyle.SnakeCase => new NamesFollowRule(
-                new Regex("^[a-z][a-z0-9]*(_[a-z0-9]+)*$", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-z0-9]*(_[a-z0-9]+)*\z", RegexOptions.CultureInvariant),
                 "snake_case",
                 scope),
             NamingStyle.UpperSnakeCase => new NamesFollowRule(
-                new Regex("^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$", RegexOptions.CultureInvariant),
+                new Regex(@"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*\z", RegexOptions.CultureInvariant),
                 "UPPER_SNAKE_CASE",
                 scope),
             NamingStyle.LowerCase => new NamesFollowRule(
-                new Regex("^[a-z][a-z0-9]*$", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-z0-9]*\z", RegexOptions.CultureInvariant),
                 "lowercase",
                 scope),
             NamingStyle.CamelCase => new NamesFollowRule(
-                new Regex("^[a-z][a-zA-Z0-9]*$", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant),
                 "camelCase",
                 scope),
             NamingStyle.PascalCase => new NamesFollowRule(
-                new Regex("^[A-Z][a-zA-Z0-9]*$", RegexOptions.CultureInvariant),
+                new Regex(@"^[A-Z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant),
                 "PascalCase",
                 scope),
             _ => throw new ArgumentOutOfRangeException(nameof(style), style, null),

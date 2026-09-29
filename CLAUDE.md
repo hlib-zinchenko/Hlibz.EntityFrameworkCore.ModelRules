@@ -49,9 +49,16 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   8.0.x on net8.0, 9.0.x on net9.0, 10.0.x on net10.0. So each build of the library is compiled
   and tested against its own EF major, and the package's dependency group for each TFM pulls the
   matching EF. Use `#if NET10_0_OR_GREATER` for APIs that only exist in newer EF majors (see
-  `ModelWalker.IsJson` and the JSON complex-type container column in `ModelIdentifiers`). Keep the
-  pinned patch versions current: a known-vulnerable transitive package fails the build, because
-  `TreatWarningsAsErrors` turns NuGet audit warnings into errors.
+  `ModelWalker.IsJson` and the JSON complex-type container column in `ModelIdentifiers`).
+- **The Relational pin is the package's minimum EF Core version.** Its version becomes the
+  `>=` floor in the published package's dependency group for that TFM, so raising it forces every
+  consumer onto that patch. A consumer whose project references `Microsoft.EntityFrameworkCore`
+  or `.Relational` directly at an older patch then gets `NU1605` on restore (README's
+  Compatibility section tells them to update). So raise it only when there's a reason: NuGet
+  audit reporting a vulnerable transitive package (`TreatWarningsAsErrors` makes that a build
+  error), or a fix or API the library needs. Test-only packages (the providers, test SDKs) can
+  be bumped freely: the tests then run against the newer EF patch they pull in, while the
+  package's floor stays where it is.
 - **Where rules run.** `ModelConfigurationBuilderExtensions.UseModelRules` (in the
   `Microsoft.EntityFrameworkCore` namespace, for discoverability) adds
   `Internal/ModelRulesConvention`, an `IModelFinalizingConvention`. It has to be *finalizing*:
@@ -67,7 +74,8 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   sets a default on it, and it applies defaults before running any rule set. That way the call
   order in `ConfigureConventions` doesn't matter; two separately appended conventions would run
   in registration order. Defaults only touch configuration from EF conventions, never explicit
-  `OnDelete` or data annotations.
+  `OnDelete` or data annotations. Calling `UseModelRules` twice adds a second rule set to the
+  same convention; it runs every rule set before throwing once with all their violations.
 - **The static entry point is `ModelRuleVerifier`, not `ModelRules`.** A class named like a
   namespace segment breaks consumers whose own namespace has that segment (e.g.
   `Acme.ModelRules.Tests`: `ModelRules.Verify` resolves to the namespace, CS0234).
@@ -84,11 +92,21 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
 - `ModelRuleViolation` has two shapes. The entity constructor takes an entity type and member
   path. The target constructor is for things that aren't entity types (sequences, the model),
   and leaves `EntityClrType`, `EntityTypeName` and `MemberPath` null. Entity and member
-  exclusions never match target-only violations; only `Where` does.
+  exclusions never match target-only violations; only `Where` does. The entity constructor also
+  records the owners of an owned entity type (internal `Owners`, with the member path from each
+  through the ownership navigations), so `Entity<Order>()` covers `Order`'s owned types and
+  `Property<Order>(x => x.ShippingAddress.Street)` matches a violation on the owned type.
 - `Internal/ModelWalker` enumerates scalar properties, complex-type properties included, and
   reports each against the entity type that declares it (or contains its complex property), with
   a dotted `MemberPath` (`Address.City`). `DeclaredProperties` gives each property exactly once
-  for property rules. `AllProperties` includes inherited ones, used per store object.
+  for property rules. `AllProperties` includes inherited ones, used per store object. Its facet
+  helpers (`HasMaxLength`, `HasPrecision`, `HasExplicitColumnType`) look through
+  `GetPrincipals()`, because EF gives a foreign key column its principal key's facets, and at the
+  value converter's mapping hints (a `Guid` converted to string is 36 long). `StoreObjects` is
+  the main table plus any `SplitToTable` fragments. `IsMappingLink` recognizes the cascading
+  foreign keys EF adds between one entity's tables (TPT derived to base, a split table to the
+  main one), which aren't relationships. The column facet rules skip properties stored inside
+  JSON (`ModelProperty.IsJson`); MR006 doesn't, because EF writes enums into JSON as numbers too.
 - `Internal/ModelIdentifiers` collects every database identifier exactly once: schemas, tables,
   views, columns, key/FK/index/check constraint names, sequences and database functions. It
   deduplicates by store object, because TPH, table splitting and owned types map several entity
@@ -96,7 +114,9 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   to the type that introduces it. Constraint names are read per table (inherited ones included),
   because under TPC each concrete table has its own; row-internal foreign keys (table
   splitting, owned types in the owner's table) are skipped since the database has no
-  constraint for them. JSON-mapped owned types contribute only their container column.
+  constraint for them. An entity type split with `SplitToTable` contributes every fragment
+  table's name, columns and constraints, including the foreign key linking it to the main
+  table. JSON-mapped owned types contribute only their container column.
   Sequences, functions and schemas only they use have no entity type and are reported with a
   target. MR002 (naming), MR007 (schema) and MR009 (identifier length) all use it.
 - `NamingScope.All` is `~None`, not an OR of today's flags: enum constants are compiled into
@@ -122,7 +142,12 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   proves that what the rules see in the model is what `EnsureCreated` actually produces, by
   reading each database's own catalog. It also covers each database's defaults and quirks:
   Postgres truncating long names, `numeric` vs `decimal(18,2)`, SQL Server temporal period
-  columns, and MySQL always naming primary keys `PRIMARY`. `DatabaseFixture` (one container per
+  columns, and MySQL always naming primary keys `PRIMARY`. The MR006 JSON tests save a row and
+  read the raw JSON back, since how enums land inside a document (numbers by default; Npgsql
+  writes a `MapEnum` enum by name, except a scalar in an owned type) is provider behavior no
+  model metadata states. Oracle's MySQL provider can't create a `ToJson()` table (the model
+  builds, `EnsureCreated` throws), so its fixture sets `SupportsJsonColumns` false and those
+  tests skip. `DatabaseFixture` (one container per
   test class) gives each context a fresh database. The shared tests live in the generic
   `DatabaseSchemaTests<TFixture>`, and one derived class per provider adds its own. Entities,
   models and rule sets are compiled in from the unit test project (`Entities.cs`, `Models.cs`,

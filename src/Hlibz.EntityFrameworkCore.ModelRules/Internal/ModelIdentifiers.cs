@@ -37,7 +37,8 @@ internal sealed record ModelIdentifier(
 /// Collects every database identifier the model produces - schemas, tables, views, columns
 /// (complex-type and JSON container columns included), key, foreign key, index and check
 /// constraint names, sequences and database functions - each exactly once, even when TPH, table
-/// splitting or owned types map several entity types to the same table.
+/// splitting or owned types map several entity types to the same table. An entity type split
+/// across tables (<c>SplitToTable</c>) contributes the names of every table it is split into.
 /// </summary>
 internal static class ModelIdentifiers
 {
@@ -57,16 +58,6 @@ internal static class ModelIdentifiers
             }
         }
 
-        void AddSchema(string? schema, IReadOnlyEntityType? entityType)
-        {
-            if (schema is not null)
-            {
-                Add(
-                    new ModelIdentifier(NamingScope.Schemas, "schema", schema, entityType, null),
-                    string.Empty);
-            }
-        }
-
         // Base and owner types first, so an identifier several entity types share (a TPH column,
         // a table-splitting key) is reported against the type that introduces it, whatever order
         // the model lists them in.
@@ -80,63 +71,15 @@ internal static class ModelIdentifiers
 
             foreach (StoreObjectType storeObjectType in TableLikeStoreObjectTypes)
             {
-                if (StoreObjectIdentifier.Create(entityType, storeObjectType) is not { } storeObject)
+                foreach (StoreObjectIdentifier storeObject in
+                         ModelWalker.StoreObjects(entityType, storeObjectType))
                 {
-                    continue;
+                    AddMappedNames(entityType, storeObject, Add);
                 }
-
-                string store = storeObject.DisplayName();
-
-                if (IntroducesMapping(entityType, storeObject))
-                {
-                    string kind = storeObjectType == StoreObjectType.Table ? "table" : "view";
-                    Add(
-                        new ModelIdentifier(
-                            NamingScope.Tables,
-                            kind,
-                            storeObject.Name,
-                            entityType,
-                            null,
-                            storeObject.Schema),
-                        store);
-                    AddSchema(storeObject.Schema, entityType);
-                }
-
-                foreach (ModelProperty property in ModelWalker.AllProperties(entityType))
-                {
-                    if (!property.IsJson && property.Property.GetColumnName(storeObject) is { } column)
-                    {
-                        Add(
-                            new ModelIdentifier(
-                                NamingScope.Columns,
-                                "column",
-                                column,
-                                property.EntityType,
-                                property.Path),
-                            store);
-                    }
-                }
-
-#if NET10_0_OR_GREATER
-                foreach (IReadOnlyComplexProperty complexProperty in entityType.GetComplexProperties())
-                {
-                    if (complexProperty.ComplexType.IsMappedToJson()
-                        && complexProperty.ComplexType.GetContainerColumnName() is { } container)
-                    {
-                        Add(
-                            new ModelIdentifier(
-                                NamingScope.Columns,
-                                "column",
-                                container,
-                                (IReadOnlyEntityType)complexProperty.DeclaringType,
-                                complexProperty.Name),
-                            store);
-                    }
-                }
-#endif
             }
 
-            if (StoreObjectIdentifier.Create(entityType, StoreObjectType.Table) is { } table)
+            foreach (StoreObjectIdentifier table in
+                     ModelWalker.StoreObjects(entityType, StoreObjectType.Table))
             {
                 AddConstraintNames(entityType, table, Add);
             }
@@ -153,7 +96,7 @@ internal static class ModelIdentifiers
                     null,
                     sequence.Schema),
                 sequence.Schema ?? string.Empty);
-            AddSchema(sequence.Schema, null);
+            AddSchema(sequence.Schema, null, Add);
         }
 
         foreach (IReadOnlyDbFunction function in model.GetDbFunctions())
@@ -174,10 +117,90 @@ internal static class ModelIdentifiers
                     null,
                     function.Schema),
                 function.Schema ?? string.Empty);
-            AddSchema(function.Schema, null);
+            AddSchema(function.Schema, null, Add);
         }
 
         return identifiers;
+    }
+
+    /// <summary>
+    /// The table or view name, its schema and its columns, for one table or view the entity type
+    /// is mapped to.
+    /// </summary>
+    private static void AddMappedNames(
+        IReadOnlyEntityType entityType,
+        StoreObjectIdentifier storeObject,
+        Action<ModelIdentifier, string> add)
+    {
+        string store = storeObject.DisplayName();
+
+        if (IntroducesMapping(entityType, storeObject))
+        {
+            string kind = storeObject.StoreObjectType == StoreObjectType.Table ? "table" : "view";
+            add(
+                new ModelIdentifier(
+                    NamingScope.Tables,
+                    kind,
+                    storeObject.Name,
+                    entityType,
+                    null,
+                    storeObject.Schema),
+                store);
+            AddSchema(storeObject.Schema, entityType, add);
+        }
+
+        foreach (ModelProperty property in ModelWalker.AllProperties(entityType))
+        {
+            if (!property.IsJson && property.Property.GetColumnName(storeObject) is { } column)
+            {
+                add(
+                    new ModelIdentifier(
+                        NamingScope.Columns,
+                        "column",
+                        column,
+                        property.EntityType,
+                        property.Path),
+                    store);
+            }
+        }
+
+#if NET10_0_OR_GREATER
+        // A JSON complex property's container column is on the main table, not on a table the
+        // entity type is split into.
+        if (StoreObjectIdentifier.Create(entityType, storeObject.StoreObjectType) != storeObject)
+        {
+            return;
+        }
+
+        foreach (IReadOnlyComplexProperty complexProperty in entityType.GetComplexProperties())
+        {
+            if (complexProperty.ComplexType.IsMappedToJson()
+                && complexProperty.ComplexType.GetContainerColumnName() is { } container)
+            {
+                add(
+                    new ModelIdentifier(
+                        NamingScope.Columns,
+                        "column",
+                        container,
+                        (IReadOnlyEntityType)complexProperty.DeclaringType,
+                        complexProperty.Name),
+                    store);
+            }
+        }
+#endif
+    }
+
+    private static void AddSchema(
+        string? schema,
+        IReadOnlyEntityType? entityType,
+        Action<ModelIdentifier, string> add)
+    {
+        if (schema is not null)
+        {
+            add(
+                new ModelIdentifier(NamingScope.Schemas, "schema", schema, entityType, null),
+                string.Empty);
+        }
     }
 
     /// <summary>

@@ -200,4 +200,123 @@ public sealed class TableRulesTests
 
         Assert.Empty(violations);
     }
+
+    [Fact]
+    public void SingleSchema_WithEntitySplitIntoAnotherSchema_ReportsTheSecondTable()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Profile>(profile =>
+            {
+                profile.ToTable("profiles", "people");
+                profile.SplitToTable(
+                    "profile_details",
+                    "archive",
+                    table =>
+                    {
+                        table.Property(x => x.Bio);
+                        table.Property(x => x.Website);
+                    });
+            }),
+            rules => rules.SingleSchema("people"));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal(typeof(Profile), violation.EntityClrType);
+        Assert.Equal(
+            "mapped to schema 'archive', but the model's tables belong in 'people'.",
+            violation.Message);
+    }
+
+    [Fact]
+    public void SingleSchema_WithTablesInDatabaseDefaultSchema_SuggestsHasDefaultSchema()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<State>(),
+            rules => rules.SingleSchema("dbo"),
+            provider: TestProvider.SqlServer);
+
+        Assert.Equal(
+            "mapped to schema '(default schema)', but the model's tables belong in 'dbo'. "
+            + "Configure modelBuilder.HasDefaultSchema(\"dbo\"), or give it a schema of its own.",
+            Assert.Single(violations).Message);
+
+        Assert.Empty(TestDbContext.Validate(
+            model =>
+            {
+                model.HasDefaultSchema("dbo");
+                model.Entity<State>();
+            },
+            rules => rules.SingleSchema("dbo"),
+            provider: TestProvider.SqlServer));
+    }
+
+    [Fact]
+    public void SingleSchema_WithBlankSchema_Throws()
+    {
+        using TestDbContext context = new(Models.Blog);
+
+        Assert.Throws<ArgumentException>(
+            "schema",
+            () => ModelRuleVerifier.Validate(context, rules => rules.SingleSchema(" ")));
+    }
+
+    [Fact]
+    public void NoCascadeDeleteAcrossAggregates_WithTptHierarchyOfRoots_IgnoresInheritanceLinks()
+    {
+        // Under TPT, EF Core links every derived table to its base table with a cascading
+        // foreign key. Both ends are the same aggregate, so it isn't reported.
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.Entity<Currency>().Ignore(x => x.Countries);
+                model.Entity<Account>(account =>
+                {
+                    account.UseTptMappingStrategy();
+                    account.HasOne<Currency>()
+                        .WithMany()
+                        .HasForeignKey(x => x.CurrencyId)
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+                model.Entity<SavingsAccount>().Property(x => x.Rate).HasPrecision(5, 2);
+                model.Entity<CheckingAccount>().Property(x => x.Overdraft).HasPrecision(10, 2);
+            },
+            rules => rules.NoCascadeDeleteAcrossAggregates<IAggregateRoot>());
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void NoCascadeDeleteAcrossAggregates_WithEntitySplitting_IgnoresLinkBetweenTables()
+    {
+        // EF Core links the second table to the main one with a cascading foreign key from the
+        // entity type to itself. It's one row of one aggregate, so it isn't reported.
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Profiles,
+            rules => rules.NoCascadeDeleteAcrossAggregates(type => type == typeof(Profile)));
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void MaxIdentifierLength_WithEntitySplitting_ChecksEveryTableItIsSplitInto()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Profiles,
+            rules => rules.MaxIdentifierLength(8, NamingScope.Tables));
+
+        Assert.Equal(
+            "table name 'ProfileDetails' is 14 characters long; the limit is 8.",
+            Assert.Single(violations).Message);
+    }
+
+    [Fact]
+    public void MaxIdentifierLength_WithNoneScope_ThrowsInsteadOfCheckingNothing()
+    {
+        using TestDbContext context = new(Models.Blog);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            "scope",
+            () => ModelRuleVerifier.Validate(
+                context,
+                rules => rules.MaxIdentifierLength(63, NamingScope.None)));
+    }
 }

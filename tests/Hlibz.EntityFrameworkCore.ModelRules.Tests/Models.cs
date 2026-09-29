@@ -117,4 +117,36 @@ internal static class Models
     /// </summary>
     public static void OrderTotalFunction(ModelBuilder model) =>
         model.HasDbFunction(typeof(ReportFunctions).GetMethod(nameof(ReportFunctions.OrderTotal))!);
+
+    /// <summary>
+    /// Profile split across two tables: the snake_case <c>profiles</c>, and
+    /// <c>ProfileDetails</c> with Bio and Website, on EF Core's default names.
+    /// </summary>
+    public static void Profiles(ModelBuilder model) =>
+        model.Entity<Profile>(profile =>
+        {
+            profile.ToTable("profiles");
+            profile.SplitToTable("ProfileDetails", table =>
+            {
+                table.Property(x => x.Bio);
+                table.Property(x => x.Website);
+            });
+        });
+
+    /// <summary>
+    /// Shipment owning a destination in its own table, and parcels in a table of their own that
+    /// each own a return address. No string has a max length.
+    /// </summary>
+    public static void Shipments(ModelBuilder model) =>
+        model.Entity<Shipment>(shipment =>
+        {
+            shipment.OwnsOne(x => x.Destination);
+            shipment.OwnsMany(x => x.Parcels, parcel => parcel.OwnsOne(x => x.ReturnTo));
+        });
+
+    /// <summary>
+    /// Document with its metadata in a JSON column, as an owned type.
+    /// </summary>
+    public static void JsonDocuments(ModelBuilder model) =>
+        model.Entity<Document>().OwnsOne(x => x.Meta, meta => meta.ToJson());
 }

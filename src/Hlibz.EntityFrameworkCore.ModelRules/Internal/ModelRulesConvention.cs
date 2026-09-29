@@ -75,9 +75,17 @@ internal sealed class ModelRulesConvention : IModelFinalizingConvention
             ReplaceClientSetNull(modelBuilder.Metadata, replacement);
         }
 
+        // Every rule set runs before any of them throws, so a context that calls UseModelRules
+        // more than once still gets every violation reported at once.
+        List<ModelRuleViolation> violations = [];
         foreach (ModelRuleSet ruleSet in _ruleSets)
         {
-            ruleSet.Enforce(modelBuilder.Metadata);
+            violations.AddRange(ruleSet.Validate(modelBuilder.Metadata));
+        }
+
+        if (violations.Count > 0)
+        {
+            throw new ModelRuleViolationException(violations);
         }
 
         if (_ruleSets.Count > 0)

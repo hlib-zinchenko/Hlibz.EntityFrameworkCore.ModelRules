@@ -1,3 +1,5 @@
+using Hlibz.EntityFrameworkCore.ModelRules.Internal;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -79,7 +81,8 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
 
     /// <summary>
     /// The indexes and keys of every table, gathered across all entity types mapped to it (TPH,
-    /// table splitting), each once. Under TPC each concrete table has its own.
+    /// table splitting), each once. Under TPC each concrete table has its own, and an entity type
+    /// split across tables contributes to each of them.
     /// </summary>
     private static IEnumerable<List<TableIndex>> IndexesByTable(IReadOnlyModel model)
     {
@@ -87,52 +90,63 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
 
         foreach (IReadOnlyEntityType entityType in model.GetEntityTypes())
         {
-            if (StoreObjectIdentifier.Create(entityType, StoreObjectType.Table) is not { } table)
+            foreach (StoreObjectIdentifier table in
+                     ModelWalker.StoreObjects(entityType, StoreObjectType.Table))
             {
-                continue;
-            }
-
-            if (!tables.TryGetValue(table, out List<TableIndex>? indexes))
-            {
-                tables[table] = indexes = [];
-            }
-
-            foreach (IReadOnlyKey key in entityType.GetKeys())
-            {
-                if (key.GetName(table) is { } name
-                    && Columns(key.Properties, table) is { } columns
-                    && !indexes.Exists(index => index.Name == name))
+                if (!tables.TryGetValue(table, out List<TableIndex>? indexes))
                 {
-                    indexes.Add(new TableIndex(
-                        name,
-                        key.IsPrimaryKey() ? "primary key" : "alternate key",
-                        columns,
-                        [.. columns.Select(_ => false)],
-                        IsUnique: true,
-                        IsComparable: true,
-                        Index: null));
+                    tables[table] = indexes = [];
                 }
-            }
 
-            foreach (IReadOnlyIndex index in entityType.GetIndexes())
-            {
-                if (index.GetDatabaseName(table) is { } name
-                    && Columns(index.Properties, table) is { } columns
-                    && !indexes.Exists(existing => existing.Name == name))
-                {
-                    indexes.Add(new TableIndex(
-                        name,
-                        index.IsUnique ? "unique index" : "index",
-                        columns,
-                        Descending(index, columns.Count),
-                        index.IsUnique,
-                        IsComparable(index),
-                        index));
-                }
+                AddIndexes(entityType, table, indexes);
             }
         }
 
         return tables.Values;
+    }
+
+    /// <summary>
+    /// The keys and indexes of one entity type that are on the given table, skipping any already
+    /// gathered from another entity type mapped to it.
+    /// </summary>
+    private static void AddIndexes(
+        IReadOnlyEntityType entityType,
+        StoreObjectIdentifier table,
+        List<TableIndex> indexes)
+    {
+        foreach (IReadOnlyKey key in entityType.GetKeys())
+        {
+            if (key.GetName(table) is { } name
+                && Columns(key.Properties, table) is { } columns
+                && !indexes.Exists(index => index.Name == name))
+            {
+                indexes.Add(new TableIndex(
+                    name,
+                    key.IsPrimaryKey() ? "primary key" : "alternate key",
+                    columns,
+                    [.. columns.Select(_ => false)],
+                    IsUnique: true,
+                    IsComparable: true,
+                    Index: null));
+            }
+        }
+
+        foreach (IReadOnlyIndex index in entityType.GetIndexes())
+        {
+            if (index.GetDatabaseName(table) is { } name
+                && Columns(index.Properties, table) is { } columns
+                && !indexes.Exists(existing => existing.Name == name))
+            {
+                indexes.Add(new TableIndex(
+                    name,
+                    index.IsUnique ? "unique index" : "index",
+                    columns,
+                    Descending(index, columns.Count),
+                    index.IsUnique,
+                    IsComparable(index),
+                    index));
+            }
+        }
     }
 
     private static List<string>? Columns(

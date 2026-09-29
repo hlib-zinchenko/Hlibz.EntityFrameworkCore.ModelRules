@@ -66,7 +66,7 @@ Until 1.0.0 ships, only preview versions are published, so `--prerelease` is req
 central package management, set the version explicitly in `Directory.Packages.props`:
 
 ```xml
-<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.3" />
+<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.4" />
 ```
 
 ## Quick start
@@ -173,8 +173,8 @@ dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 | MR003 | `DecimalsHavePrecision()` | Every column stored as `decimal`, including value objects converted to one, has a precision or an explicit column type. |
 | MR004 | `StringsHaveMaxLength()` | Every column stored as `string`, including enums and value objects converted to one, has a max length or an explicit column type. |
 | MR005 | `NullabilityMatchesClr()` | A `string` property isn't nullable in the database, and a `string?` property isn't `NOT NULL`. Same for `Nullable<T>`. |
-| MR006 | `EnumsStoredAsStrings()` | No enum is stored as its underlying number. |
-| MR007 | `SingleSchema(schema?)` | Every table, view, sequence and database function is in `schema`. Without a schema, everything uses the schema most tables already use. |
+| MR006 | `EnumsStoredAsStrings()` | No enum is stored as its underlying number, including the elements of a `List<Status>` or `Status[]` and enums inside a JSON document. An enum the provider maps to a database enum type, such as a PostgreSQL enum (Npgsql's `MapEnum`), passes, except a single enum inside a JSON owned type, which Npgsql writes as a number. |
+| MR007 | `SingleSchema(schema?)` | Every table, view, sequence and database function is in `schema`. Without a schema, everything uses the schema most tables already use. A table without a schema is in the model's default schema, so `SingleSchema("dbo")` needs `HasDefaultSchema("dbo")`. |
 | MR008 | `NoCascadeDeleteAcrossAggregates(isRoot)` | No relationship between two aggregate roots deletes by cascade. Identify roots with a marker type (`<IAggregateRoot>`) or a predicate. |
 | MR009 | `MaxIdentifierLength(max, scope)` | No identifier is longer than the database allows: 63 on PostgreSQL, 128 on SQL Server. EF Core shortens the names it generates, and sequence names, but not other names you configure explicitly. |
 | MR010 | `EntitiesHaveQueryFilter<TMarker>()` | Every entity type implementing the marker (e.g. `ISoftDeletable` or `ITenantOwned`) has a query filter, on the root of its hierarchy. |
@@ -211,7 +211,17 @@ A few details:
 - **Column facet rules look at what's stored.** A `Money` value object converted to `decimal`
   needs a precision. An enum stored as a string needs a max length. Set these once for every
   enum with `Properties<Enum>().HaveConversion<string>().HaveMaxLength(50)` in
-  `ConfigureConventions`, which also satisfies MR006.
+  `ConfigureConventions`, which also satisfies MR006. A length or precision EF Core supplies
+  itself counts too: a foreign key column takes its principal key's (a `CountryCode` referencing
+  a `Code` with `HasMaxLength(2)`), and a `Guid` converted to a string is 36 characters long.
+- **Enum collections need their own conversion.** EF Core stores a `List<Status>` as numbers,
+  in a JSON array or a database array, and `Properties<Enum>().HaveConversion<string>()` doesn't
+  change that. MR006 reports each such collection; convert its elements with
+  `PrimitiveCollection(x => x.Statuses).ElementType().HasConversion<string>()`.
+- **Entity splitting and TPT are covered.** An entity type split with `SplitToTable` has every
+  table's names checked, the foreign key linking them included. So does each table of a TPT
+  hierarchy. That linking foreign key cascades, but it isn't a relationship between
+  aggregates, so MR008 ignores it.
 - **Sequences and functions have no entity type.** Their violations carry a `Target` such as
   `sequence sales.order_numbers` and a `null` `EntityClrType`. That includes the sequence EF
   Core creates for a TPC hierarchy's keys. Under TPC, every concrete table's own foreign key
@@ -221,7 +231,9 @@ A few details:
   that later versions add.
 - **JSON columns are skipped by the column facet rules.** That covers owned types mapped with
   `ToJson()` and JSON complex types on EF Core 10. Their properties aren't columns. Naming still
-  checks the JSON container column itself.
+  checks the JSON container column itself. MR006 is the exception: EF Core writes an enum into
+  a JSON document as a number too, unless it's converted, so enums inside JSON are checked. The
+  integration tests read the stored JSON back from PostgreSQL and SQL Server to confirm it.
 - **MR011 fires on every optional relationship you haven't configured**, because
   `ClientSetNull` is EF Core's default. `ConfigureClientSetNullAs(DeleteBehavior.SetNull)` in
   `ConfigureConventions` switches them all at once. It runs after `OnModelCreating` and before
@@ -245,9 +257,11 @@ configurationBuilder.UseModelRules(rules => rules
         .Property<Invoice>(x => x.Total)              // a property
         .Property<Blog>(x => x.Address.Latitude))     // a property of a complex type
     .NoShadowProperties(except => except
-        .Property<AuditEntry>("PeriodStart"))         // a shadow property, by name
+        .Property<AuditEntry>("TenantId"))            // a shadow property, by name
     .NoCascadeDeleteAcrossAggregates<IAggregateRoot>(except => except
         .Property<Order>(x => x.Customer))            // a navigation
+    .NamesFollow(NamingStyle.SnakeCase, except: except => except
+        .Property<Order>(x => x.ShippingAddress.Street)) // a property of an owned type
     .StringsHaveMaxLength(except => except
         .Where(v => v.EntityClrType?.Namespace == "MyApp.Legacy"))
     .Except(except => except
@@ -255,7 +269,9 @@ configurationBuilder.UseModelRules(rules => rules
         .Entity("BlogTag")));                         // a shared-type entity, by name
 ```
 
-An exclusion for an entity type also covers the types derived from it.
+An exclusion for an entity type also covers the types derived from it and the types it owns
+(`OwnsOne`, `OwnsMany`). An owned type's own violations, such as its table name, are on its
+navigation: `Property<Order>(x => x.Lines)`.
 
 ## Checking without registering
 
@@ -328,6 +344,10 @@ a compiled model the test is where the rules are enforced. `dotnet ef dbcontext 
 
 - EF Core 8, 9 and 10. The package has one build per EF Core major (`net8.0`, `net9.0`,
   `net10.0`), and CI tests each one.
+- A recent EF Core patch. Each build requires at least the EF Core patch it was built and
+  tested against; the package's NuGet page lists it under Dependencies. If restoring fails with
+  `NU1605` (a package downgrade), update your EF Core packages to that patch or later. Microsoft
+  only supports the latest patch of each EF Core major anyway.
 - Provider-neutral: rules only read EF Core's relational metadata. The test suite builds the same
   models on PostgreSQL (Npgsql), SQL Server, SQLite and MySQL (Oracle's `MySql.EntityFrameworkCore`
   on EF Core 8-10; Pomelo on EF Core 8-9, since Pomelo has no EF Core 10 release yet) and

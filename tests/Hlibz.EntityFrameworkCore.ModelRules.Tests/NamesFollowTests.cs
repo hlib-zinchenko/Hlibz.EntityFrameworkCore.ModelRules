@@ -251,4 +251,79 @@ public sealed class NamesFollowTests
                 .Select(violation => $"{violation.Target}: {violation.Message}")
                 .Order(StringComparer.Ordinal));
     }
+
+    [Fact]
+    public void NamesFollow_WithEntitySplitting_ChecksEveryTableItIsSplitInto()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Profiles,
+            rules => rules.NamesFollow(NamingStyle.SnakeCase));
+
+        // The second table's own names, besides the main table's.
+        string[] messages = [.. violations.Select(violation => violation.Message)];
+        Assert.Contains("table name 'ProfileDetails' is not snake_case.", messages);
+        Assert.Contains("column name 'Bio' is not snake_case.", messages);
+        Assert.Contains("primary key name 'PK_ProfileDetails' is not snake_case.", messages);
+        Assert.Contains(
+            "foreign key name 'FK_ProfileDetails_profiles_Id' is not snake_case.",
+            messages);
+        Assert.All(violations, violation => Assert.Equal(typeof(Profile), violation.EntityClrType));
+    }
+
+    [Fact]
+    public void NamesFollow_WithTptHierarchy_ChecksEachTablesKeyAndLinkingForeignKey()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                model.Entity<Vehicle>().UseTptMappingStrategy();
+                model.Entity<Car>();
+            },
+            rules => rules.NamesFollow(
+                NamingStyle.SnakeCase,
+                NamingScope.Keys | NamingScope.ForeignKeys));
+
+        Assert.Equal(
+            [
+                "Car.Id: foreign key name 'FK_Car_Vehicle_Id' is not snake_case.",
+                "Vehicle.Id: primary key name 'PK_Car' is not snake_case.",
+                "Vehicle.Id: primary key name 'PK_Vehicle' is not snake_case.",
+            ],
+            violations
+                .Select(violation => $"{violation.Target}: {violation.Message}")
+                .Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void NamesFollow_WithTrailingNewline_ReportsIt()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<State>(state =>
+            {
+                state.ToTable("states\n");
+                state.HasKey(x => x.Id).HasName("pk_states");
+                state.Property(x => x.Id).HasColumnName("id");
+                state.Property(x => x.CountryId).HasColumnName("country_id");
+            }),
+            rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Tables));
+
+        Assert.Equal("State", Assert.Single(violations).Target);
+    }
+
+    [Fact]
+    public void NamesFollow_WithNoneScope_ThrowsInsteadOfCheckingNothing()
+    {
+        using TestDbContext context = new(Models.Blog);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            "scope",
+            () => ModelRuleVerifier.Validate(
+                context,
+                rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.None)));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            "scope",
+            () => ModelRuleVerifier.Validate(
+                context,
+                rules => rules.NamesFollow(new Regex("^[a-z]+$"), NamingScope.None)));
+    }
 }

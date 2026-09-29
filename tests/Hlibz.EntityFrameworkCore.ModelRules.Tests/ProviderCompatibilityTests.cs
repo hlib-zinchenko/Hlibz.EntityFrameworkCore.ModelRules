@@ -102,6 +102,50 @@ public sealed class ProviderCompatibilityTests
             Assert.Single(violations).Message);
     }
 
+    [Theory]
+    [MemberData(nameof(Providers))]
+    public void EnumsStoredAsStrings_WithEnumCollection_ReportSameViolationsAsNpgsql(
+        TestProvider provider)
+    {
+        static void Rules(ModelRulesBuilder rules) => rules.EnumsStoredAsStrings();
+
+        string[] npgsql =
+        [
+            .. TestDbContext.Validate(model => model.Entity<Article>(), Rules)
+                .Select(violation => violation.ToString()),
+        ];
+        string[] actual =
+        [
+            .. TestDbContext.Validate(model => model.Entity<Article>(), Rules, provider: provider)
+                .Select(violation => violation.ToString()),
+        ];
+
+        Assert.Equal(2, npgsql.Length);
+        Assert.Equal(npgsql, actual);
+    }
+
+    [Theory]
+    [MemberData(nameof(JsonProviders))]
+    public void EnumsStoredAsStrings_WithEnumsInJsonOwnedType_ReportSameViolationsAsNpgsql(
+        TestProvider provider)
+    {
+        static void Rules(ModelRulesBuilder rules) => rules.EnumsStoredAsStrings();
+
+        string[] npgsql =
+        [
+            .. TestDbContext.Validate(Models.JsonDocuments, Rules)
+                .Select(violation => violation.ToString()),
+        ];
+        string[] actual =
+        [
+            .. TestDbContext.Validate(Models.JsonDocuments, Rules, provider: provider)
+                .Select(violation => violation.ToString()),
+        ];
+
+        Assert.Equal(2, npgsql.Length);
+        Assert.Equal(npgsql, actual);
+    }
+
     [Fact]
     public void NoShadowProperties_WithSqlServerTemporalTable_AllowsPeriodColumns()
     {

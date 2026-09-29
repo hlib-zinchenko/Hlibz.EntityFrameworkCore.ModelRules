@@ -18,6 +18,12 @@ public sealed class MySqlFixture : DatabaseFixture
     public override IReadOnlySet<string> ServerAssignedNames { get; } =
         new HashSet<string>(StringComparer.Ordinal) { "PRIMARY" };
 
+    /// <summary>
+    /// Oracle's MySQL provider has no JSON store type for <c>ToJson()</c>: the model builds, but
+    /// creating its table throws.
+    /// </summary>
+    public override bool SupportsJsonColumns => false;
+
     protected override IDatabaseContainer Container => _container;
 
     protected override string IdentifiersSql =>

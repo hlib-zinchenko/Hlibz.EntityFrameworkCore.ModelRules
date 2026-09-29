@@ -16,7 +16,7 @@ internal sealed class StringsHaveMaxLengthRule() : ModelRule("MR004", "StringsHa
         {
             if (property.IsJson
                 || ModelWalker.ProviderType(property.Property) != typeof(string)
-                || property.Property.GetMaxLength() is not null
+                || ModelWalker.HasMaxLength(property.Property)
                 || ModelWalker.HasExplicitColumnType(property.Property))
             {
                 continue;

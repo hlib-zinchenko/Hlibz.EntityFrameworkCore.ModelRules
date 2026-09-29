@@ -107,9 +107,72 @@ internal static class ModelWalker
     /// <summary>
     /// Whether the property has an explicitly configured store type, e.g. via
     /// <c>HasColumnType("text")</c>. Rules about store facets treat that as a deliberate choice.
+    /// A foreign key property inherits it from the principal key, as EF Core's type mapping does.
     /// </summary>
     public static bool HasExplicitColumnType(IReadOnlyProperty property) =>
-        property.FindAnnotation(RelationalAnnotationNames.ColumnType)?.Value is string;
+        property.GetPrincipals().Any(principal =>
+            principal.FindAnnotation(RelationalAnnotationNames.ColumnType)?.Value is string);
+
+    /// <summary>
+    /// Whether the column has a max length: configured on the property, inherited from the
+    /// principal key of a foreign key property, or implied by its value converter (a
+    /// <see cref="Guid"/> converted to a string is 36 characters).
+    /// </summary>
+    public static bool HasMaxLength(IReadOnlyProperty property) =>
+        property.GetPrincipals().Any(principal => principal.GetMaxLength() is not null)
+        || property.FindTypeMapping()?.Converter?.MappingHints?.Size is not null;
+
+    /// <summary>
+    /// Whether the column has a precision: configured on the property, inherited from the
+    /// principal key of a foreign key property, or implied by its value converter.
+    /// </summary>
+    public static bool HasPrecision(IReadOnlyProperty property) =>
+        property.GetPrincipals().Any(principal => principal.GetPrecision() is not null)
+        || property.FindTypeMapping()?.Converter?.MappingHints?.Precision is not null;
+
+    /// <summary>
+    /// Whether the provider stores the enum property as a database enum type of its own (e.g.
+    /// PostgreSQL enums mapped with Npgsql's <c>MapEnum</c>): its type mapping takes the enum
+    /// as is, with no value converter. A provider that stores an enum as a number maps it with
+    /// a converter to the underlying type.
+    /// </summary>
+    public static bool IsNativeEnum(IReadOnlyProperty property) =>
+        property.FindTypeMapping() is { Converter: null } mapping
+        && (Nullable.GetUnderlyingType(mapping.ClrType) ?? mapping.ClrType).IsEnum;
+
+    /// <summary>
+    /// Whether the foreign key is a link EF Core creates between the tables of one entity: from
+    /// a TPT-derived type's table to its base type's, or from a table an entity type is split
+    /// into (<c>SplitToTable</c>) to its main table. It belongs to the mapping, not to a
+    /// relationship: it can't be configured, and both ends are the same row of the same entity.
+    /// </summary>
+    public static bool IsMappingLink(IReadOnlyForeignKey foreignKey) =>
+        foreignKey.PrincipalEntityType.IsAssignableFrom(foreignKey.DeclaringEntityType)
+        && foreignKey.PrincipalKey.IsPrimaryKey()
+        && foreignKey.DeclaringEntityType.FindPrimaryKey() is { } primaryKey
+        && primaryKey.Properties.SequenceEqual(foreignKey.Properties);
+
+    /// <summary>
+    /// The tables (or views) the entity type is mapped to: its main one, plus any it is split
+    /// into with <c>SplitToTable</c> or <c>SplitToView</c>.
+    /// </summary>
+    public static IEnumerable<StoreObjectIdentifier> StoreObjects(
+        IReadOnlyEntityType entityType,
+        StoreObjectType storeObjectType)
+    {
+        if (StoreObjectIdentifier.Create(entityType, storeObjectType) is not { } main)
+        {
+            yield break;
+        }
+
+        yield return main;
+
+        foreach (IReadOnlyEntityTypeMappingFragment fragment in
+                 entityType.GetMappingFragments(storeObjectType))
+        {
+            yield return fragment.StoreObject;
+        }
+    }
 
     private static IEnumerable<ModelProperty> ComplexProperties(
         IReadOnlyEntityType entityType,

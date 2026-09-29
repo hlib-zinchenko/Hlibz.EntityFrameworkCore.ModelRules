@@ -100,4 +100,58 @@ public sealed class ExclusionTests
 
         public ModelRuleExclusions Exclusions { get; }
     }
+
+    [Fact]
+    public void Entity_WithOwnerType_ExcludesItsOwnedTypes()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Shipments,
+            rules => rules
+                .StringsHaveMaxLength(except => except.Entity<Shipment>())
+                .NamesFollow(
+                    NamingStyle.SnakeCase,
+                    except: except => except.Entity(nameof(Shipment))));
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void Entity_WithOwnedType_ExcludesOnlyThatType()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Shipments,
+            rules => rules.StringsHaveMaxLength(except => except.Entity<ShippingAddress>()));
+
+        Assert.Equal(
+            "Parcel.Label",
+            Assert.Single(violations).Target);
+    }
+
+    [Fact]
+    public void Property_WithPathThroughOwnedTypes_ExcludesThatMember()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Shipments,
+            rules => rules.StringsHaveMaxLength(except => except
+                .Property<Shipment>(x => x.Destination.Street)
+                .Property<Shipment>("Parcels.ReturnTo.Street")
+                .Property<Parcel>(x => x.Label)));
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void Property_WithOwnedNavigation_ExcludesOwnedTypesOwnViolations()
+    {
+        // The parcels' table name is a violation on the owned type itself, so it's on the path
+        // of the navigation that leads to it.
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            Models.Shipments,
+            rules => rules.NamesFollow(
+                NamingStyle.SnakeCase,
+                NamingScope.Tables,
+                except => except.Property<Shipment>(x => x.Parcels)));
+
+        Assert.Equal("Shipment", Assert.Single(violations).Target);
+    }
 }

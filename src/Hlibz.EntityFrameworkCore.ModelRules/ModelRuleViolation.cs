@@ -42,6 +42,7 @@ public sealed class ModelRuleViolation
         MemberPath = memberPath;
         Target = memberPath is null ? EntityTypeName : $"{EntityTypeName}.{memberPath}";
         Message = message;
+        Owners = FindOwners(entityType, memberPath);
     }
 
     /// <summary>
@@ -120,6 +121,47 @@ public sealed class ModelRuleViolation
     /// </summary>
     internal string? EntityTypeModelName { get; }
 
+    /// <summary>
+    /// Gets the entity types that own the violation's entity type, nearest first, each with the
+    /// member path to the violation from it, so exclusions on an owner cover its owned types.
+    /// Empty when the entity type isn't owned, or the violation isn't on an entity type.
+    /// </summary>
+    internal IReadOnlyList<ViolationOwner> Owners { get; } = [];
+
     /// <inheritdoc />
     public override string ToString() => $"{RuleId} {RuleName}: {Target}: {Message}";
+
+    private static List<ViolationOwner> FindOwners(
+        IReadOnlyEntityType entityType,
+        string? memberPath)
+    {
+        List<ViolationOwner> owners = [];
+        string? path = memberPath;
+        for (IReadOnlyForeignKey? ownership = entityType.FindOwnership();
+             ownership?.PrincipalToDependent is { } navigation;
+             ownership = ownership.PrincipalEntityType.FindOwnership())
+        {
+            path = path is null ? navigation.Name : $"{navigation.Name}.{path}";
+            IReadOnlyEntityType owner = ownership.PrincipalEntityType;
+            owners.Add(new ViolationOwner(owner.ClrType, owner.Name, owner.DisplayName(), path));
+        }
+
+        return owners;
+    }
 }
+
+/// <summary>
+/// An entity type that owns the entity type a violation is on.
+/// </summary>
+/// <param name="ClrType">The owner's CLR type.</param>
+/// <param name="ModelName">The owner's full model name.</param>
+/// <param name="DisplayName">The owner's display name.</param>
+/// <param name="MemberPath">
+/// The violation's member path from the owner, through the ownership navigations (e.g.
+/// <c>ShippingAddress.Street</c>).
+/// </param>
+internal sealed record ViolationOwner(
+    Type ClrType,
+    string ModelName,
+    string DisplayName,
+    string MemberPath);

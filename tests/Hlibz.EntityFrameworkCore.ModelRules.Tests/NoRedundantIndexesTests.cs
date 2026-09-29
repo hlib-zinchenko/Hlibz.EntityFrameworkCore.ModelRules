@@ -113,4 +113,26 @@ public sealed class NoRedundantIndexesTests
                 .Select(violation => violation.Message.Split('\'')[1])
                 .Order(StringComparer.Ordinal));
     }
+
+    [Fact]
+    public void NoRedundantIndexes_WithEntitySplitting_ComparesIndexesOnEachTable()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model =>
+            {
+                Models.Profiles(model);
+                model.Entity<Profile>(profile =>
+                {
+                    profile.HasIndex(x => x.Bio);
+                    profile.HasIndex(x => new { x.Bio, x.Website });
+                });
+            },
+            rules => rules.NoRedundantIndexes());
+
+        Assert.Equal(
+            "index 'IX_ProfileDetails_Bio' (Bio) is a leading prefix of index "
+            + "'IX_ProfileDetails_Bio_Website' (Bio, Website), which serves the same lookups. "
+            + "Remove it.",
+            Assert.Single(violations).Message);
+    }
 }

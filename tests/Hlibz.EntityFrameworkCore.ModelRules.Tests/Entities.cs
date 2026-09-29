@@ -185,3 +185,105 @@ public sealed class Book : IAggregateRoot
 
     public List<Author> Authors { get; } = [];
 }
+
+/// <summary>
+/// An entity split across two tables with <c>SplitToTable</c>: Bio and Website go to a second
+/// table.
+/// </summary>
+public sealed class Profile
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Bio { get; set; } = string.Empty;
+
+    public string Website { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Owns one address (in the shipment's table) and many parcels (in a table of their own), each
+/// parcel owning an address in turn.
+/// </summary>
+public sealed class Shipment
+{
+    public int Id { get; set; }
+
+    public ShippingAddress Destination { get; set; } = new();
+
+    public List<Parcel> Parcels { get; } = [];
+}
+
+public sealed class Parcel
+{
+    public string Label { get; set; } = string.Empty;
+
+    public ShippingAddress ReturnTo { get; set; } = new();
+}
+
+public sealed class ShippingAddress
+{
+    public string Street { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// A lookup row keyed by a two-letter code, referenced from <see cref="Store"/> by that code.
+/// </summary>
+public sealed class Region
+{
+    public string Code { get; set; } = string.Empty;
+
+    public decimal TaxRate { get; set; }
+
+    public BlogStatus Status { get; set; }
+}
+
+public sealed class Store
+{
+    public int Id { get; set; }
+
+    public string RegionCode { get; set; } = string.Empty;
+
+    public decimal RegionTaxRate { get; set; }
+
+    public BlogStatus RegionStatus { get; set; }
+
+    public Guid ExternalId { get; set; }
+
+    public int Number { get; set; }
+}
+
+/// <summary>
+/// Primitive collections: two of enums, which EF Core stores as numbers by default, and one of
+/// plain integers.
+/// </summary>
+public sealed class Article
+{
+    public int Id { get; set; }
+
+    public List<BlogStatus> Statuses { get; set; } = [];
+
+    public BlogStatus[] History { get; set; } = [];
+
+    public List<int> Ratings { get; set; } = [];
+}
+
+/// <summary>
+/// Metadata stored as a JSON document, holding an enum and a collection of enums, which EF Core
+/// writes into the document as numbers by default.
+/// </summary>
+public sealed class Document
+{
+    public int Id { get; set; }
+
+    public DocumentMeta Meta { get; set; } = new();
+}
+
+public sealed class DocumentMeta
+{
+    public string Title { get; set; } = string.Empty;
+
+    public BlogStatus Status { get; set; }
+
+    public List<BlogStatus> Statuses { get; set; } = [];
+}

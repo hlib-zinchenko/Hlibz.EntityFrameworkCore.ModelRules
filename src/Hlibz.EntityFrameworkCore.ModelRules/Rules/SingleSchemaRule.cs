@@ -49,10 +49,17 @@ internal sealed class SingleSchemaRule(string? expectedSchema) : ModelRule("MR00
             string? schema = identifier.Schema ?? defaultSchema;
             if (!string.Equals(schema, expected, StringComparison.Ordinal))
             {
+                // A table without a schema is in the database's default one, which the model
+                // doesn't name; point at the fix rather than leave '(default schema)' a puzzle.
+                string hint = schema is null
+                    ? $" Configure modelBuilder.HasDefaultSchema(\"{expected}\"), or give it a "
+                      + "schema of its own."
+                    : string.Empty;
+
                 yield return Violation(
                     identifier,
                     $"mapped to schema '{schema ?? DefaultSchemaName}', but the model's tables "
-                    + $"belong in '{expected ?? DefaultSchemaName}'.");
+                    + $"belong in '{expected ?? DefaultSchemaName}'.{hint}");
             }
         }
     }

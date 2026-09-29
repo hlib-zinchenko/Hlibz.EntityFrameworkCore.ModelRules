@@ -16,7 +16,8 @@ public sealed class ModelRuleExclusions
 
     /// <summary>
     /// Excludes every violation on <typeparamref name="TEntity"/> and on entity types derived from
-    /// it, including violations on its members.
+    /// it, including violations on its members and on the types it owns (<c>OwnsOne</c>,
+    /// <c>OwnsMany</c>).
     /// </summary>
     /// <typeparam name="TEntity">The entity type to exclude.</typeparam>
     /// <returns>The same instance, for chaining.</returns>
@@ -24,14 +25,15 @@ public sealed class ModelRuleExclusions
     {
         _matchers.Add(violation =>
             violation.EntityClrType is { } entityClrType
-            && typeof(TEntity).IsAssignableFrom(entityClrType));
+            && (typeof(TEntity).IsAssignableFrom(entityClrType)
+                || violation.Owners.Any(owner => typeof(TEntity).IsAssignableFrom(owner.ClrType))));
         return this;
     }
 
     /// <summary>
     /// Excludes every violation on the entity type with the given name, including violations on
-    /// its members. Matches the model name (e.g. <c>MyApp.Blog</c> or a shared-type name such as
-    /// <c>BlogTag</c>), the display name, or the CLR type's short name.
+    /// its members and on the types it owns. Matches the model name (e.g. <c>MyApp.Blog</c> or a
+    /// shared-type name such as <c>BlogTag</c>), the display name, or the CLR type's short name.
     /// </summary>
     /// <param name="entityTypeName">The entity type name to exclude.</param>
     /// <returns>The same instance, for chaining.</returns>
@@ -44,7 +46,7 @@ public sealed class ModelRuleExclusions
 
     /// <summary>
     /// Excludes violations on one member of <typeparamref name="TEntity"/>: a property, a
-    /// navigation, or a property of a complex type (<c>b =&gt; b.Address.City</c>).
+    /// navigation, or a property of a complex or owned type (<c>b =&gt; b.Address.City</c>).
     /// </summary>
     /// <typeparam name="TEntity">The entity type that has the member.</typeparam>
     /// <param name="member">The member access expression, e.g. <c>b =&gt; b.Price</c>.</param>
@@ -58,7 +60,8 @@ public sealed class ModelRuleExclusions
     /// <summary>
     /// Excludes violations on one member of <typeparamref name="TEntity"/> by name. Use this for
     /// members with no CLR property, such as shadow properties, or dotted paths through complex
-    /// properties (<c>Address.City</c>).
+    /// properties or owned types (<c>Address.City</c>). An owned type's own violations, such as
+    /// its table name, are on the path of its navigation (<c>Address</c>).
     /// </summary>
     /// <typeparam name="TEntity">The entity type that has the member.</typeparam>
     /// <param name="memberPath">The member name or dotted member path.</param>
@@ -71,11 +74,16 @@ public sealed class ModelRuleExclusions
         // a derived type must match the base too - and excluding it via a base type must match
         // derived types that re-map it.
         _matchers.Add(violation =>
-            string.Equals(violation.MemberPath, memberPath, StringComparison.Ordinal)
-            && violation.EntityClrType is { } entityClrType
-            && (typeof(TEntity).IsAssignableFrom(entityClrType)
-                || entityClrType.IsAssignableFrom(typeof(TEntity))));
+            violation.EntityClrType is { } entityClrType
+            && ((string.Equals(violation.MemberPath, memberPath, StringComparison.Ordinal)
+                 && IsRelated(entityClrType))
+                || violation.Owners.Any(owner =>
+                    string.Equals(owner.MemberPath, memberPath, StringComparison.Ordinal)
+                    && IsRelated(owner.ClrType))));
         return this;
+
+        static bool IsRelated(Type clrType) =>
+            typeof(TEntity).IsAssignableFrom(clrType) || clrType.IsAssignableFrom(typeof(TEntity));
     }
 
     /// <summary>
@@ -95,9 +103,22 @@ public sealed class ModelRuleExclusions
 
     private static bool MatchesEntityName(ModelRuleViolation violation, string name) =>
         violation.EntityClrType is { } entityClrType
-        && (string.Equals(violation.EntityTypeModelName, name, StringComparison.Ordinal)
-            || string.Equals(violation.EntityTypeName, name, StringComparison.Ordinal)
-            || string.Equals(entityClrType.Name, name, StringComparison.Ordinal));
+        && (MatchesName(
+                violation.EntityTypeModelName,
+                violation.EntityTypeName,
+                entityClrType,
+                name)
+            || violation.Owners.Any(owner =>
+                MatchesName(owner.ModelName, owner.DisplayName, owner.ClrType, name)));
+
+    private static bool MatchesName(
+        string? modelName,
+        string? displayName,
+        Type clrType,
+        string name) =>
+        string.Equals(modelName, name, StringComparison.Ordinal)
+        || string.Equals(displayName, name, StringComparison.Ordinal)
+        || string.Equals(clrType.Name, name, StringComparison.Ordinal);
 
     private static string GetMemberPath(LambdaExpression lambda, string paramName)
     {

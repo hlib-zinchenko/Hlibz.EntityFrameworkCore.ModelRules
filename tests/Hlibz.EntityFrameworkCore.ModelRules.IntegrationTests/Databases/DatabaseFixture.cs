@@ -17,6 +17,11 @@ public abstract class DatabaseFixture : IAsyncLifetime
     public virtual IReadOnlySet<string> ServerAssignedNames { get; } = new HashSet<string>();
 
     /// <summary>
+    /// Whether the provider maps owned and complex types to JSON columns (<c>ToJson()</c>).
+    /// </summary>
+    public virtual bool SupportsJsonColumns => true;
+
+    /// <summary>
     /// A query returning <c>(kind, name)</c> rows for every table, column, constraint and index in
     /// the current database's default schema.
     /// </summary>
@@ -37,16 +42,23 @@ public abstract class DatabaseFixture : IAsyncLifetime
     /// Creates a context on a new, uniquely named database. The database itself is created by
     /// <c>EnsureCreatedAsync</c>.
     /// </summary>
+    /// <param name="model">Builds the model.</param>
+    /// <param name="rules">Rules to register on the context, if any.</param>
+    /// <param name="useProvider">
+    /// Configures the provider with the database's connection string, for a test that needs
+    /// provider options of its own; the fixture's default configuration when omitted.
+    /// </param>
     internal IntegrationDbContext CreateContext(
         Action<ModelBuilder> model,
-        Action<ModelRulesBuilder>? rules = null)
+        Action<ModelRulesBuilder>? rules = null,
+        Action<DbContextOptionsBuilder, string>? useProvider = null)
     {
         string connectionString = WithDatabase(
             Container.GetConnectionString(),
             $"mr_{Guid.NewGuid():N}"[..16]);
 
         return new IntegrationDbContext(
-            options => UseProvider(options, connectionString),
+            options => (useProvider ?? UseProvider)(options, connectionString),
             model,
             rules);
     }

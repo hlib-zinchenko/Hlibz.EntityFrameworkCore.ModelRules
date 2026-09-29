@@ -16,7 +16,7 @@ internal sealed class DecimalsHavePrecisionRule() : ModelRule("MR003", "Decimals
         {
             if (property.IsJson
                 || ModelWalker.ProviderType(property.Property) != typeof(decimal)
-                || property.Property.GetPrecision() is not null
+                || ModelWalker.HasPrecision(property.Property)
                 || ModelWalker.HasExplicitColumnType(property.Property))
             {
                 continue;

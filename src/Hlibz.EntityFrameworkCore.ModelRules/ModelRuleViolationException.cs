@@ -15,7 +15,8 @@ public sealed class ModelRuleViolationException : Exception
     public ModelRuleViolationException(IReadOnlyList<ModelRuleViolation> violations)
         : base(BuildMessage(violations))
     {
-        Violations = violations;
+        // A copy, so the list the message was built from can't change afterwards.
+        Violations = [.. violations];
     }
 
     /// <summary>

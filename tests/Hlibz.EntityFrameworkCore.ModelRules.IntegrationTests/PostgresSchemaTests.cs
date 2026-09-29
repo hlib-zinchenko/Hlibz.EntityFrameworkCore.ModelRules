@@ -79,4 +79,43 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
             reported,
             name => Assert.Contains(sequences, sequence => (string?)sequence[0] == name));
     }
+
+    [Fact]
+    public async Task EnumsStoredAsStrings_WithNativeEnumsInJsonOwnedType_ReportsScalarNumber()
+    {
+        // With a PostgreSQL enum mapping, Npgsql writes a collection of the enum into an owned
+        // type's JSON by name, but the single enum as its number.
+        await using IntegrationDbContext context = Database.CreateContext(
+            Models.JsonDocuments,
+            useProvider: UseNpgsqlWithEnum);
+
+        IReadOnlyList<ModelRuleViolation> violations =
+            ModelRuleVerifier.Validate(context, rules => rules.EnumsStoredAsStrings());
+
+        Assert.Equal("DocumentMeta.Status", Assert.Single(violations).Target);
+        Assert.Equal(
+            """{"Status":1,"Statuses":["Published","Draft"]}""",
+            await SaveAndReadEnumsAsync(context));
+    }
+
+    [Fact]
+    public async Task EnumsStoredAsStrings_WithNativeEnumsInJsonComplexType_StoresNames()
+    {
+        await using IntegrationDbContext context = Database.CreateContext(
+            model => model.Entity<Document>().ComplexProperty(x => x.Meta, meta => meta.ToJson()),
+            useProvider: UseNpgsqlWithEnum);
+
+        IReadOnlyList<ModelRuleViolation> violations =
+            ModelRuleVerifier.Validate(context, rules => rules.EnumsStoredAsStrings());
+
+        Assert.Empty(violations);
+        Assert.Equal(
+            """{"Status":"Published","Statuses":["Published","Draft"]}""",
+            await SaveAndReadEnumsAsync(context));
+    }
+
+    private static void UseNpgsqlWithEnum(
+        DbContextOptionsBuilder options,
+        string connectionString) =>
+        options.UseNpgsql(connectionString, npgsql => npgsql.MapEnum<BlogStatus>("blog_status"));
 }
