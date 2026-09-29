@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+
 namespace Hlibz.EntityFrameworkCore.ModelRules.Tests;
 
 public sealed class NoClientSideDeleteBehaviorsTests
@@ -89,5 +92,76 @@ public sealed class NoClientSideDeleteBehaviorsTests
             rules => rules.NoClientSideDeleteBehaviors());
 
         Assert.Empty(violations);
+    }
+
+    [Theory]
+    [InlineData(DeleteBehavior.SetNull)]
+    [InlineData(DeleteBehavior.Restrict)]
+    public void ConfigureClientSetNullAs_WithDefaultOptionalRelationship_ReplacesBeforeRulesRun(
+        DeleteBehavior behavior)
+    {
+        // Rules registered first: the replacement still runs before them.
+        using TestDbContext context = new(
+            Models.Blog,
+            conventions => conventions
+                .UseModelRules(rules => rules.NoClientSideDeleteBehaviors())
+                .ConfigureClientSetNullAs(behavior));
+
+        ModelRuleVerifier.Verify(context);
+
+        IForeignKey foreignKey = Assert.Single(
+            context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(Post))!
+                .GetForeignKeys());
+        Assert.Equal(behavior, foreignKey.DeleteBehavior);
+    }
+
+    [Fact]
+    public void ConfigureClientSetNullAs_WithExplicitClientSetNull_KeepsItAndReportsIt()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Blog>(blog =>
+            {
+                blog.ComplexProperty(x => x.Address);
+                blog.HasMany(x => x.Posts).WithOne().OnDelete(DeleteBehavior.ClientSetNull);
+            }),
+            rules => rules.NoClientSideDeleteBehaviors(),
+            conventions => conventions.ConfigureClientSetNullAs(DeleteBehavior.SetNull));
+
+        Assert.Equal("Post.BlogId", Assert.Single(violations).Target);
+    }
+
+    [Fact]
+    public void ConfigureClientSetNullAs_WithRequiredRelationship_KeepsCascade()
+    {
+        using TestDbContext context = new(
+            Models.Countries,
+            conventions => conventions.ConfigureClientSetNullAs(DeleteBehavior.Restrict));
+
+        IReadOnlyEntityType state =
+            context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(State))!;
+        Assert.Equal(DeleteBehavior.Cascade, Assert.Single(state.GetForeignKeys()).DeleteBehavior);
+    }
+
+    [Fact]
+    public void ConfigureClientSetNullAs_WithoutRules_DoesNotCountAsRegisteredRules()
+    {
+        using TestDbContext context = new(
+            Models.Blog,
+            conventions => conventions.ConfigureClientSetNullAs(DeleteBehavior.SetNull));
+
+        Assert.Throws<InvalidOperationException>(() => ModelRuleVerifier.Verify(context));
+    }
+
+    [Theory]
+    [InlineData(DeleteBehavior.ClientSetNull)]
+    [InlineData(DeleteBehavior.ClientCascade)]
+    [InlineData((DeleteBehavior)42)]
+    public void ConfigureClientSetNullAs_WithClientSideBehavior_Throws(DeleteBehavior behavior)
+    {
+        using TestDbContext context = new(
+            Models.Blog,
+            conventions => conventions.ConfigureClientSetNullAs(behavior));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => context.Model);
     }
 }

@@ -58,7 +58,7 @@ public sealed class EntryPointTests
             conventions => conventions.UseModelRules(rules => rules
                 .NoShadowProperties(except => except.Entity<Post>())));
 
-        ModelRules.Verify(context);
+        ModelRuleVerifier.Verify(context);
         Assert.NotNull(context.Model);
     }
 
@@ -69,7 +69,7 @@ public sealed class EntryPointTests
             Models.Blog,
             conventions => conventions.UseModelRules(rules => rules.NoShadowProperties()));
 
-        Assert.Throws<ModelRuleViolationException>(() => ModelRules.Verify(context));
+        Assert.Throws<ModelRuleViolationException>(() => ModelRuleVerifier.Verify(context));
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class EntryPointTests
         using TestDbContext context = new(Models.Blog);
 
         InvalidOperationException exception =
-            Assert.Throws<InvalidOperationException>(() => ModelRules.Verify(context));
+            Assert.Throws<InvalidOperationException>(() => ModelRuleVerifier.Verify(context));
         Assert.Contains("has no model rules registered", exception.Message, StringComparison.Ordinal);
     }
 
@@ -88,7 +88,7 @@ public sealed class EntryPointTests
         using TestDbContext context = new(Models.Blog);
 
         ModelRuleViolationException exception = Assert.Throws<ModelRuleViolationException>(
-            () => ModelRules.Verify(context, rules => rules.EnumsStoredAsStrings()));
+            () => ModelRuleVerifier.Verify(context, rules => rules.EnumsStoredAsStrings()));
 
         Assert.Equal("Blog.Status", Assert.Single(exception.Violations).Target);
     }
@@ -111,7 +111,52 @@ public sealed class EntryPointTests
         Assert.Same(runtimeModel, context.Model);
 
         // ...but Verify builds the design-time model, which does run them.
-        Assert.Throws<ModelRuleViolationException>(() => ModelRules.Verify(context));
+        Assert.Throws<ModelRuleViolationException>(() => ModelRuleVerifier.Verify(context));
+    }
+
+    [Fact]
+    public void Verify_WithOptions_CreatesContextAndRunsRegisteredRules()
+    {
+        Assert.Throws<ModelRuleViolationException>(
+            () => ModelRuleVerifier.Verify(OptionsDbContext.CreateOptions()));
+    }
+
+    [Fact]
+    public void Validate_WithOptions_ChecksRulesPassedIn()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = ModelRuleVerifier.Validate(
+            new DbContextOptionsBuilder<PassingOptionsDbContext>()
+                .UseNpgsql("Server=localhost")
+                .Options,
+            rules => rules.EnumsStoredAsStrings());
+
+        Assert.Equal("Blog.Status", Assert.Single(violations).Target);
+    }
+
+    [Fact]
+    public void Verify_WithUntypedOptions_ThrowsArgumentException()
+    {
+        DbContextOptions options =
+            new DbContextOptionsBuilder().UseNpgsql("Server=localhost").Options;
+
+        ArgumentException exception =
+            Assert.Throws<ArgumentException>(() => ModelRuleVerifier.Verify(options));
+        Assert.Contains(
+            "DbContextOptionsBuilder<TContext>",
+            exception.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Verify_WithOptionsForContextWithoutOptionsConstructor_ThrowsArgumentException()
+    {
+        DbContextOptions options = new DbContextOptionsBuilder<TestDbContext>()
+            .UseNpgsql("Server=localhost")
+            .Options;
+
+        ArgumentException exception =
+            Assert.Throws<ArgumentException>(() => ModelRuleVerifier.Verify(options));
+        Assert.Contains("no public constructor", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -136,5 +181,30 @@ public sealed class EntryPointTests
             model.GetEntityTypes()
                 .Where(entityType => !entityType.ClrType.Name.EndsWith('s'))
                 .Select(entityType => new ModelRuleViolation(this, entityType, null, "must end with 's'."));
+    }
+
+    /// <summary>
+    /// A context built only from its options, the way a DI-registered context is.
+    /// </summary>
+    public sealed class OptionsDbContext(DbContextOptions<OptionsDbContext> options)
+        : DbContext(options)
+    {
+        public static DbContextOptions<OptionsDbContext> CreateOptions() =>
+            new DbContextOptionsBuilder<OptionsDbContext>().UseNpgsql("Server=localhost").Options;
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder conventions) =>
+            conventions.UseModelRules(rules => rules.NoShadowProperties());
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            Models.Blog(modelBuilder);
+    }
+
+    /// <summary>
+    /// Takes the non-generic options, which <c>ModelRuleVerifier</c> also accepts.
+    /// </summary>
+    public sealed class PassingOptionsDbContext(DbContextOptions options) : DbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            Models.Blog(modelBuilder);
     }
 }

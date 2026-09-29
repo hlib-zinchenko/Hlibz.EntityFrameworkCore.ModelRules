@@ -18,7 +18,7 @@ public static class ModelConfigurationBuilderExtensions
     /// </summary>
     /// <remarks>
     /// A context using a compiled model skips model building - and so these rules - at runtime.
-    /// Call <see cref="ModelRules.Verify(DbContext)"/> from a test to keep it covered.
+    /// Call <see cref="ModelRuleVerifier.Verify(DbContext)"/> from a test to keep it covered.
     /// </remarks>
     /// <param name="configurationBuilder">The builder passed to <c>ConfigureConventions</c>.</param>
     /// <param name="configure">Chooses the rules to enforce.</param>
@@ -30,7 +30,47 @@ public static class ModelConfigurationBuilderExtensions
         ArgumentNullException.ThrowIfNull(configurationBuilder);
 
         ModelRuleSet ruleSet = ModelRulesBuilder.Build(configure);
-        configurationBuilder.Conventions.Add(_ => new ModelRulesConvention(ruleSet));
+        ModelRulesConvention.For(configurationBuilder).AddRuleSet(ruleSet);
+        return configurationBuilder;
+    }
+
+    /// <summary>
+    /// Replaces <see cref="DeleteBehavior.ClientSetNull"/>, EF Core's default for optional
+    /// relationships, with a delete behavior the database enforces, on every relationship whose
+    /// delete behavior isn't configured explicitly. Fixes MR011
+    /// (<c>NoClientSideDeleteBehaviors</c>) for every optional relationship at once.
+    /// </summary>
+    /// <remarks>
+    /// Runs after <c>OnModelCreating</c> and every EF Core convention, and before the rules
+    /// registered with <see cref="UseModelRules"/>, whichever is called first. A relationship
+    /// configured with <c>OnDelete(...)</c> or the <c>[DeleteBehavior]</c> attribute keeps its
+    /// behavior, <c>ClientSetNull</c> included. SQL Server rejects
+    /// <see cref="DeleteBehavior.SetNull"/> where it would create multiple cascade paths; use
+    /// <see cref="DeleteBehavior.Restrict"/> there, or configure those relationships explicitly.
+    /// </remarks>
+    /// <param name="configurationBuilder">The builder passed to <c>ConfigureConventions</c>.</param>
+    /// <param name="deleteBehavior">The behavior to use instead, usually
+    /// <see cref="DeleteBehavior.SetNull"/> or <see cref="DeleteBehavior.Restrict"/>.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="deleteBehavior"/> is <see cref="DeleteBehavior.ClientSetNull"/> or
+    /// <see cref="DeleteBehavior.ClientCascade"/>, which MR011 reports, or isn't a defined value.
+    /// </exception>
+    public static ModelConfigurationBuilder ConfigureClientSetNullAs(
+        this ModelConfigurationBuilder configurationBuilder,
+        DeleteBehavior deleteBehavior)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        if (deleteBehavior is DeleteBehavior.ClientSetNull or DeleteBehavior.ClientCascade
+            || !Enum.IsDefined(deleteBehavior))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deleteBehavior),
+                deleteBehavior,
+                "Use a delete behavior the database enforces, such as SetNull or Restrict.");
+        }
+
+        ModelRulesConvention.For(configurationBuilder).ReplaceClientSetNull(deleteBehavior);
         return configurationBuilder;
     }
 }

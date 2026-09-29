@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hlibz.EntityFrameworkCore.ModelRules.Internal;
 
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +11,7 @@ namespace Hlibz.EntityFrameworkCore.ModelRules;
 /// <summary>
 /// Runs model rules outside the model-building pipeline - typically from a unit test.
 /// </summary>
-public static class ModelRules
+public static class ModelRuleVerifier
 {
     /// <summary>
     /// Builds the context's full design-time model, which runs the rules registered with
@@ -32,8 +34,28 @@ public static class ModelRules
             throw new InvalidOperationException(
                 $"{context.GetType().Name} has no model rules registered. Call "
                 + "configurationBuilder.UseModelRules(...) in its ConfigureConventions, or pass "
-                + "the rules to ModelRules.Verify(context, rules => ...).");
+                + "the rules to ModelRuleVerifier.Verify(context, rules => ...).");
         }
+    }
+
+    /// <summary>
+    /// Creates the context the options were built for, then checks it as
+    /// <see cref="Verify(DbContext)"/> does. Saves building the context by hand in a test,
+    /// including in a theory over several contexts.
+    /// </summary>
+    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>.
+    /// The context must have a public constructor that takes only them.</param>
+    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The context has no rules registered, so there was nothing to verify.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// The options don't name a context type that can be created from them.
+    /// </exception>
+    public static void Verify(DbContextOptions options)
+    {
+        using DbContext context = CreateContext(options);
+        Verify(context);
     }
 
     /// <summary>
@@ -47,6 +69,23 @@ public static class ModelRules
     {
         ArgumentNullException.ThrowIfNull(context);
         ModelRulesBuilder.Build(configure).Enforce(GetDesignTimeModel(context));
+    }
+
+    /// <summary>
+    /// Creates the context the options were built for, then checks its full design-time model
+    /// against the given rules, independently of any rules registered on the context itself.
+    /// </summary>
+    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>.
+    /// The context must have a public constructor that takes only them.</param>
+    /// <param name="configure">Chooses the rules to check.</param>
+    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
+    /// <exception cref="ArgumentException">
+    /// The options don't name a context type that can be created from them.
+    /// </exception>
+    public static void Verify(DbContextOptions options, Action<ModelRulesBuilder> configure)
+    {
+        using DbContext context = CreateContext(options);
+        Verify(context, configure);
     }
 
     /// <summary>
@@ -76,6 +115,25 @@ public static class ModelRules
     }
 
     /// <summary>
+    /// Creates the context the options were built for, then checks its full design-time model
+    /// against the given rules and returns every violation instead of throwing.
+    /// </summary>
+    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>.
+    /// The context must have a public constructor that takes only them.</param>
+    /// <param name="configure">Chooses the rules to check.</param>
+    /// <returns>Every violation found, in rule registration order; empty when the model passes.</returns>
+    /// <exception cref="ArgumentException">
+    /// The options don't name a context type that can be created from them.
+    /// </exception>
+    public static IReadOnlyList<ModelRuleViolation> Validate(
+        DbContextOptions options,
+        Action<ModelRulesBuilder> configure)
+    {
+        using DbContext context = CreateContext(options);
+        return Validate(context, configure);
+    }
+
+    /// <summary>
     /// Checks a model against the given rules and returns every violation instead of throwing.
     /// </summary>
     /// <param name="model">The model to check - use the design-time model
@@ -87,6 +145,34 @@ public static class ModelRules
         IReadOnlyModel model,
         Action<ModelRulesBuilder> configure) =>
         ModelRulesBuilder.Build(configure).Validate(model);
+
+    private static DbContext CreateContext(DbContextOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        Type contextType = options.ContextType;
+        if (contextType == typeof(DbContext) || contextType.IsAbstract)
+        {
+            throw new ArgumentException(
+                $"The options are for {contextType.Name}, not a concrete context. Build them with "
+                + "DbContextOptionsBuilder<TContext>.",
+                nameof(options));
+        }
+
+        ConstructorInfo constructor =
+            contextType.GetConstructor([typeof(DbContextOptions<>).MakeGenericType(contextType)])
+            ?? contextType.GetConstructor([typeof(DbContextOptions)])
+            ?? throw new ArgumentException(
+                $"{contextType.Name} has no public constructor that takes only its "
+                + "DbContextOptions. Create the context yourself and pass it to Verify instead.",
+                nameof(options));
+
+        return (DbContext)constructor.Invoke(
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            [options],
+            culture: null);
+    }
 
     private static IModel GetDesignTimeModel(DbContext context) =>
         context.GetService<IDesignTimeModel>().Model;

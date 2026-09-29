@@ -29,7 +29,7 @@ internal sealed class TestDbContext(
         TestProvider provider = TestProvider.Npgsql)
     {
         using TestDbContext context = new(configureModel, configureConventions, provider: provider);
-        return ModelRules.Validate(context, configureRules);
+        return ModelRuleVerifier.Validate(context, configureRules);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

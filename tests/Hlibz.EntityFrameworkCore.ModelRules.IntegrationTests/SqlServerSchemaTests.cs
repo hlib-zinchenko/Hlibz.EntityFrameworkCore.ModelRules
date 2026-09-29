@@ -11,7 +11,7 @@ public sealed class SqlServerSchemaTests(SqlServerFixture database)
         await using IntegrationDbContext context = Database.CreateContext(Models.Dogs);
 
         IReadOnlyList<ModelRuleViolation> violations =
-            ModelRules.Validate(context, rules => rules.DecimalsHavePrecision());
+            ModelRuleVerifier.Validate(context, rules => rules.DecimalsHavePrecision());
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.Equal("Dog.Weight", Assert.Single(violations).Target);
@@ -48,7 +48,7 @@ public sealed class SqlServerSchemaTests(SqlServerFixture database)
             model.HasSequence<long>("OrderNumbers");
         });
 
-        IReadOnlyList<ModelRuleViolation> violations = ModelRules.Validate(
+        IReadOnlyList<ModelRuleViolation> violations = ModelRuleVerifier.Validate(
             context,
             rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Sequences));
         await context.Database.EnsureCreatedAsync(CancellationToken);

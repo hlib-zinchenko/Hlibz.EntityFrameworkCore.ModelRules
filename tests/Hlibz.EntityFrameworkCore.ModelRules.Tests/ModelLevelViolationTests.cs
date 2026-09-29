@@ -65,7 +65,7 @@ public sealed class ModelLevelViolationTests
                 rules => rules.Add(new SequencesAreLowerCaseRule())));
 
         ModelRuleViolationException exception =
-            Assert.Throws<ModelRuleViolationException>(() => ModelRules.Verify(context));
+            Assert.Throws<ModelRuleViolationException>(() => ModelRuleVerifier.Verify(context));
 
         Assert.Contains(
             "  - X002 SequencesAreLowerCase: sequence sales.OrderNumbers: must be lowercase.",

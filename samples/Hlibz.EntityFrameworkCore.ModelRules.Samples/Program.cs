@@ -10,7 +10,7 @@ try
 {
     // Same call the "Quick start" test in the README uses: builds the full design-time model,
     // which runs every rule registered in ConfigureConventions.
-    ModelRules.Verify(context);
+    ModelRuleVerifier.Verify(context);
     Console.WriteLine("Model passes every rule.");
 }
 catch (ModelRuleViolationException exception)

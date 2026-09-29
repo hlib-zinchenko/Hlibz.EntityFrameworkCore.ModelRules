@@ -8,7 +8,8 @@ A small NuGet package of declarative rules that check a finished EF Core model a
 conventions (shadow properties, naming, decimal precision, string lengths, nullability, enum
 storage, schemas, aggregate boundaries, query filters, delete behaviors, redundant indexes,
 identifier lengths). Rules run while EF
-builds the model (`UseModelRules` in `ConfigureConventions`) or from a test (`ModelRules.Verify`).
+builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
+(`ModelRuleVerifier.Verify`).
 
 ## Requires
 
@@ -59,8 +60,17 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   slimmed-down `RuntimeModel`. While finalizing, the model is the full design-time `Model`, the
   same instance `IDesignTimeModel` hands out later, and every other convention (naming plugins,
   `SharedTableConvention`'s name shortening) has already run. The convention records models that
-  passed in a `ConditionalWeakTable`, so `ModelRules.Verify(DbContext)` can tell "rules passed"
-  apart from "no rules registered".
+  passed in a `ConditionalWeakTable`, so `ModelRuleVerifier.Verify(DbContext)` can tell "rules
+  passed" apart from "no rules registered".
+- **One convention per `ModelConfigurationBuilder`.** `ModelRulesConvention.For` registers it on
+  first use and hands the same instance to every extension method. `ConfigureClientSetNullAs`
+  sets a default on it, and it applies defaults before running any rule set. That way the call
+  order in `ConfigureConventions` doesn't matter; two separately appended conventions would run
+  in registration order. Defaults only touch configuration from EF conventions, never explicit
+  `OnDelete` or data annotations.
+- **The static entry point is `ModelRuleVerifier`, not `ModelRules`.** A class named like a
+  namespace segment breaks consumers whose own namespace has that segment (e.g.
+  `Acme.ModelRules.Tests`: `ModelRules.Verify` resolves to the namespace, CS0234).
 - **Rules take `IReadOnlyModel`.** That's the interface common to the finalizing
   `IConventionModel` and the design-time `IModel`, so the same rule code runs in both places. Only
   use read-only metadata APIs in rules.

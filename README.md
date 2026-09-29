@@ -59,7 +59,14 @@ rules.
 ## Install
 
 ```bash
-dotnet add package Hlibz.EntityFrameworkCore.ModelRules
+dotnet add package Hlibz.EntityFrameworkCore.ModelRules --prerelease
+```
+
+Until 1.0.0 ships, only preview versions are published, so `--prerelease` is required. With
+central package management, set the version explicitly in `Directory.Packages.props`:
+
+```xml
+<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.2" />
 ```
 
 ## Quick start
@@ -69,6 +76,10 @@ Register the rules in your context's `ConfigureConventions`:
 ```csharp
 protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
 {
+    // Optional: turn EF Core's ClientSetNull default into SetNull, so MR011 doesn't
+    // flag every optional relationship you haven't configured.
+    configurationBuilder.ConfigureClientSetNullAs(DeleteBehavior.SetNull);
+
     configurationBuilder.UseModelRules(rules => rules
         .NoShadowProperties()
         .NamesFollow(NamingStyle.SnakeCase)
@@ -103,8 +114,33 @@ Then add one test, so a violation fails CI rather than an app startup:
 public void Model_follows_rules()
 {
     using BillingDbContext context = new(options);
-    ModelRules.Verify(context);
+    ModelRuleVerifier.Verify(context);
 }
+```
+
+A context normally built by dependency injection can be verified from its options instead.
+`Verify` creates the context itself, through a public constructor that takes only the options.
+With several contexts, as in a modular monolith, make it a theory:
+
+```csharp
+public static TheoryData<DbContextOptions> Contexts => new()
+{
+    Options<BillingDbContext>(),
+    Options<CatalogDbContext>(),
+    Options<ShippingDbContext>(),
+};
+
+[Theory]
+[MemberData(nameof(Contexts))]
+public void Model_follows_rules(DbContextOptions options) => ModelRuleVerifier.Verify(options);
+
+// The same provider and plugins as the app. The connection string is never used.
+private static DbContextOptions<TContext> Options<TContext>()
+    where TContext : DbContext =>
+    new DbContextOptionsBuilder<TContext>()
+        .UseNpgsql("Host=unused")
+        .UseSnakeCaseNamingConvention()
+        .Options;
 ```
 
 `Verify` builds the full design-time model, which runs the rules registered above. It throws if
@@ -137,7 +173,7 @@ dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
 | MR008 | `NoCascadeDeleteAcrossAggregates(isRoot)` | No relationship between two aggregate roots deletes by cascade. Identify roots with a marker type (`<IAggregateRoot>`) or a predicate. |
 | MR009 | `MaxIdentifierLength(max, scope)` | No identifier is longer than the database allows: 63 on PostgreSQL, 128 on SQL Server. EF Core shortens the names it generates, and sequence names, but not other names you configure explicitly. |
 | MR010 | `EntitiesHaveQueryFilter<TMarker>()` | Every entity type implementing the marker (e.g. `ISoftDeletable` or `ITenantOwned`) has a query filter, on the root of its hierarchy. |
-| MR011 | `NoClientSideDeleteBehaviors()` | No relationship uses `ClientSetNull` (EF Core's default for optional relationships) or `ClientCascade`. Both leave the database constraint at NO ACTION, so deleting a principal fails whenever its dependents aren't loaded. |
+| MR011 | `NoClientSideDeleteBehaviors()` | No relationship uses `ClientSetNull` (EF Core's default for optional relationships) or `ClientCascade`. Both leave the database constraint at NO ACTION, so deleting a principal fails whenever its dependents aren't loaded. Add `ConfigureClientSetNullAs(DeleteBehavior.SetNull)` to fix every unconfigured optional relationship at once. |
 | MR012 | `NoNavigationsAcrossAggregates(isRoot)` | No navigation leads from one aggregate root to another. Roots refer to each other by key. |
 | MR013 | `AggregateRootsHaveConcurrencyToken(isRoot)` | Every aggregate root has a row version or another concurrency token. |
 | MR014 | `NoRedundantIndexes()` | No index is a leading prefix of another index or key on the same table. Filtered indexes and indexes with provider-specific settings are skipped. |
@@ -163,19 +199,12 @@ A few details:
   `ToJson()` and JSON complex types on EF Core 10. Their properties aren't columns. Naming still
   checks the JSON container column itself.
 - **MR011 fires on every optional relationship you haven't configured**, because
-  `ClientSetNull` is EF Core's default. To switch them all at once, at the end of
-  `OnModelCreating`:
-
-  ```csharp
-  foreach (IMutableForeignKey foreignKey in modelBuilder.Model.GetEntityTypes()
-      .SelectMany(entityType => entityType.GetDeclaredForeignKeys())
-      .Where(foreignKey => foreignKey.DeleteBehavior == DeleteBehavior.ClientSetNull))
-  {
-      foreignKey.DeleteBehavior = DeleteBehavior.SetNull;   // or Restrict
-  }
-  ```
-
-  SQL Server rejects `SetNull` where it would create multiple cascade paths; use `Restrict` there.
+  `ClientSetNull` is EF Core's default. `ConfigureClientSetNullAs(DeleteBehavior.SetNull)` in
+  `ConfigureConventions` switches them all at once. It runs after `OnModelCreating` and before
+  the rules, whichever you call first. A relationship configured with `OnDelete(...)` keeps its
+  behavior, so an explicit `ClientSetNull` is still reported. SQL Server rejects `SetNull` where
+  it would create multiple cascade paths. Pass `Restrict` there, or configure those relationships
+  explicitly.
 - **MR010 checks that a filter exists, not what it filters.** An entity type that needs two
   (soft delete and tenant) passes with one.
 - **An explicit column type counts as a deliberate choice.** For example, `HasColumnType("text")`
@@ -206,13 +235,14 @@ An exclusion for an entity type also covers the types derived from it.
 
 ## Checking without registering
 
-To check rules only in tests, without registering them on the context, pass them in directly:
+To check rules only in tests, without registering them on the context, pass them in directly. Each
+method also accepts `DbContextOptions` in place of a context:
 
 ```csharp
-ModelRules.Verify(context, rules => rules.DecimalsHavePrecision());   // throws
+ModelRuleVerifier.Verify(context, rules => rules.DecimalsHavePrecision());   // throws
 
 IReadOnlyList<ModelRuleViolation> violations =
-    ModelRules.Validate(context, rules => rules.NamesFollow(NamingStyle.SnakeCase));
+    ModelRuleVerifier.Validate(context, rules => rules.NamesFollow(NamingStyle.SnakeCase));
 ```
 
 Each `ModelRuleViolation` carries a `RuleId`, a `RuleName`, a `Target` (e.g. `Blog.Address.City`)
@@ -261,10 +291,10 @@ conventions, including naming plugins and constraint-name shortening, but while 
 carries its full design-time metadata. A convention added the usual way on the finalized side
 would run after EF Core converts the model to its slimmed-down runtime form. Rules only use EF
 Core's public read-only metadata API (`IReadOnlyModel`), so a rule sees the same model whether it
-runs at startup or from `ModelRules.Verify`.
+runs at startup or from `ModelRuleVerifier.Verify`.
 
 **Compiled models.** A context that uses a compiled model (`dotnet ef dbcontext optimize`) never
-builds its model at runtime, so the startup check never runs. `ModelRules.Verify(context)` still
+builds its model at runtime, so the startup check never runs. `ModelRuleVerifier.Verify(context)` still
 builds the design-time model, which is why the test is worth keeping.
 
 ## Compatibility

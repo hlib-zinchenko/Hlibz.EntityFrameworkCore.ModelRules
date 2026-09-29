@@ -11,7 +11,7 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
         await using IntegrationDbContext context = Database.CreateContext(Models.Dogs);
 
         IReadOnlyList<ModelRuleViolation> violations =
-            ModelRules.Validate(context, rules => rules.DecimalsHavePrecision());
+            ModelRuleVerifier.Validate(context, rules => rules.DecimalsHavePrecision());
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.Equal("Dog.Weight", Assert.Single(violations).Target);
@@ -33,7 +33,7 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
             Database.CreateContext(model => model.Entity<State>().ToTable(tableName));
 
         IReadOnlyList<ModelRuleViolation> violations =
-            ModelRules.Validate(context, rules => rules.MaxIdentifierLength(63));
+            ModelRuleVerifier.Validate(context, rules => rules.MaxIdentifierLength(63));
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.StartsWith(
@@ -59,7 +59,7 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
             model.HasSequence<long>(longName);
         });
 
-        IReadOnlyList<ModelRuleViolation> violations = ModelRules.Validate(
+        IReadOnlyList<ModelRuleViolation> violations = ModelRuleVerifier.Validate(
             context,
             rules => rules.NamesFollow(NamingStyle.SnakeCase, NamingScope.Sequences));
         await context.Database.EnsureCreatedAsync(CancellationToken);

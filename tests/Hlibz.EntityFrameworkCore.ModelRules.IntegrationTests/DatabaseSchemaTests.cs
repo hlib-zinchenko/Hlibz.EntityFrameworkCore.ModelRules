@@ -49,7 +49,7 @@ public abstract class DatabaseSchemaTests<TFixture>(TFixture database)
         });
 
         IReadOnlyList<ModelRuleViolation> violations =
-            ModelRules.Validate(context, rules => rules.NamesFollow(NamingStyle.SnakeCase));
+            ModelRuleVerifier.Validate(context, rules => rules.NamesFollow(NamingStyle.SnakeCase));
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.Equal(
@@ -63,7 +63,7 @@ public abstract class DatabaseSchemaTests<TFixture>(TFixture database)
     {
         await using IntegrationDbContext context = Database.CreateContext(Models.Accounts);
 
-        IReadOnlyList<ModelRuleViolation> violations = ModelRules.Validate(
+        IReadOnlyList<ModelRuleViolation> violations = ModelRuleVerifier.Validate(
             context,
             rules => rules.NamesFollow(
                 NamingStyle.SnakeCase,
