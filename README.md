@@ -59,14 +59,13 @@ rules.
 ## Install
 
 ```bash
-dotnet add package Hlibz.EntityFrameworkCore.ModelRules --prerelease
+dotnet add package Hlibz.EntityFrameworkCore.ModelRules
 ```
 
-Until 1.0.0 ships, only preview versions are published, so `--prerelease` is required. With
-central package management, set the version explicitly in `Directory.Packages.props`:
+With central package management, set the version in `Directory.Packages.props`:
 
 ```xml
-<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.4" />
+<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0" />
 ```
 
 ## Quick start
