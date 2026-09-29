@@ -66,7 +66,7 @@ Until 1.0.0 ships, only preview versions are published, so `--prerelease` is req
 central package management, set the version explicitly in `Directory.Packages.props`:
 
 ```xml
-<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.2" />
+<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0-preview.3" />
 ```
 
 ## Quick start
@@ -118,21 +118,17 @@ public void Model_follows_rules()
 }
 ```
 
-A context normally built by dependency injection can be verified from its options instead.
-`Verify` creates the context itself, through a public constructor that takes only the options.
-With several contexts, as in a modular monolith, make it a theory:
+With several contexts, as in a modular monolith, check them all in one test. `VerifyAll` takes
+a factory for each context, so constructors that take services besides the options work too.
+It checks every context, then throws once, listing the violations grouped by context:
 
 ```csharp
-public static TheoryData<DbContextOptions> Contexts => new()
-{
-    Options<BillingDbContext>(),
-    Options<CatalogDbContext>(),
-    Options<ShippingDbContext>(),
-};
-
-[Theory]
-[MemberData(nameof(Contexts))]
-public void Model_follows_rules(DbContextOptions options) => ModelRuleVerifier.Verify(options);
+[Fact]
+public void Models_follow_rules() =>
+    ModelRuleVerifier.VerifyAll(
+        () => new BillingDbContext(Options<BillingDbContext>(), new FakeDateTimeProvider()),
+        () => new CatalogDbContext(Options<CatalogDbContext>(), new FakeDateTimeProvider()),
+        () => new ShippingDbContext(Options<ShippingDbContext>()));
 
 // The same provider and plugins as the app. The connection string is never used.
 private static DbContextOptions<TContext> Options<TContext>()
@@ -142,6 +138,9 @@ private static DbContextOptions<TContext> Options<TContext>()
         .UseSnakeCaseNamingConvention()
         .Options;
 ```
+
+A context whose constructor takes only its options can also be passed as just the options:
+`ModelRuleVerifier.Verify(Options<ShippingDbContext>())`, or several at once with `VerifyAll`.
 
 `Verify` builds the full design-time model, which runs the rules registered above. It throws if
 the context has no rules registered at all, so it can never pass by accident. Building a model
@@ -236,7 +235,8 @@ An exclusion for an entity type also covers the types derived from it.
 ## Checking without registering
 
 To check rules only in tests, without registering them on the context, pass them in directly. Each
-method also accepts `DbContextOptions` in place of a context:
+method also accepts `DbContextOptions` in place of a context, for a context whose constructor
+takes only its options:
 
 ```csharp
 ModelRuleVerifier.Verify(context, rules => rules.DecimalsHavePrecision());   // throws

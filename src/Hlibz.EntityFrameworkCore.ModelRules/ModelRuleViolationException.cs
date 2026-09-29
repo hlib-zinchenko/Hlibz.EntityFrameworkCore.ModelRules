@@ -19,6 +19,17 @@ public sealed class ModelRuleViolationException : Exception
     }
 
     /// <summary>
+    /// Initializes a new instance for the violations of several contexts, grouped by context.
+    /// </summary>
+    internal ModelRuleViolationException(
+        IReadOnlyList<(Type ContextType, IReadOnlyList<ModelRuleViolation> Violations)> failures,
+        int contextCount)
+        : base(BuildMessage(failures, contextCount))
+    {
+        Violations = failures.SelectMany(failure => failure.Violations).ToList();
+    }
+
+    /// <summary>
     /// Gets every violation found, in the order the rules were registered.
     /// </summary>
     public IReadOnlyList<ModelRuleViolation> Violations { get; }
@@ -39,6 +50,34 @@ public sealed class ModelRuleViolationException : Exception
         foreach (ModelRuleViolation violation in violations)
         {
             message.AppendLine().Append("  - ").Append(violation);
+        }
+
+        return message.ToString();
+    }
+
+    private static string BuildMessage(
+        IReadOnlyList<(Type ContextType, IReadOnlyList<ModelRuleViolation> Violations)> failures,
+        int contextCount)
+    {
+        StringBuilder message = new();
+        message.Append(failures.Count)
+            .Append(" of ")
+            .Append(contextCount)
+            .Append(contextCount == 1 ? " EF Core model has" : " EF Core models have")
+            .Append(" model rule violations:");
+
+        foreach ((Type contextType, IReadOnlyList<ModelRuleViolation> violations) in failures)
+        {
+            message.AppendLine()
+                .Append(contextType.Name)
+                .Append(" has ")
+                .Append(violations.Count)
+                .Append(violations.Count == 1 ? " violation:" : " violations:");
+
+            foreach (ModelRuleViolation violation in violations)
+            {
+                message.AppendLine().Append("  - ").Append(violation);
+            }
         }
 
         return message.ToString();

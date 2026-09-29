@@ -63,7 +63,7 @@ internal sealed class TestDbContext(
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         configureModel(modelBuilder);
 
-    private sealed class PerInstanceModelCacheKeyFactory : IModelCacheKeyFactory
+    internal sealed class PerInstanceModelCacheKeyFactory : IModelCacheKeyFactory
     {
         public object Create(DbContext context, bool designTime) =>
             (context.ContextId.InstanceId, designTime);

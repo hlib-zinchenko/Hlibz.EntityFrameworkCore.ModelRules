@@ -59,6 +59,77 @@ public static class ModelRuleVerifier
     }
 
     /// <summary>
+    /// Creates each context in turn and checks it as <see cref="Verify(DbContext)"/> does, then
+    /// throws one exception listing the violations of every context that broke a rule. Use it
+    /// for several contexts, such as the modules of a modular monolith, including contexts whose
+    /// constructors take more than their options.
+    /// </summary>
+    /// <param name="createContexts">Creates each context to check. Each context is disposed after
+    /// it has been checked.</param>
+    /// <exception cref="ModelRuleViolationException">A model breaks a rule.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// A context has no rules registered, so there was nothing to verify.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// No factories were given, or a factory returned <see langword="null"/>.
+    /// </exception>
+    public static void VerifyAll(params Func<DbContext>[] createContexts)
+    {
+        ArgumentNullException.ThrowIfNull(createContexts);
+        if (createContexts.Length == 0)
+        {
+            throw new ArgumentException(
+                "No contexts were given, so there was nothing to verify.",
+                nameof(createContexts));
+        }
+
+        List<(Type ContextType, IReadOnlyList<ModelRuleViolation> Violations)> failures = [];
+        foreach (Func<DbContext> createContext in createContexts)
+        {
+            ArgumentNullException.ThrowIfNull(createContext, nameof(createContexts));
+            using DbContext context = createContext()
+                ?? throw new ArgumentException(
+                    "A context factory returned null.",
+                    nameof(createContexts));
+
+            try
+            {
+                Verify(context);
+            }
+            catch (ModelRuleViolationException exception)
+            {
+                failures.Add((context.GetType(), exception.Violations));
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            throw new ModelRuleViolationException(failures, createContexts.Length);
+        }
+    }
+
+    /// <summary>
+    /// Creates the context each set of options was built for and checks them all as
+    /// <see cref="VerifyAll(Func{DbContext}[])"/> does.
+    /// </summary>
+    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>,
+    /// one per context. Each context must have a public constructor that takes only them.</param>
+    /// <exception cref="ModelRuleViolationException">A model breaks a rule.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// A context has no rules registered, so there was nothing to verify.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// No options were given, or they don't name a context type that can be created from them.
+    /// </exception>
+    public static void VerifyAll(params DbContextOptions[] options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        VerifyAll(options
+            .Select(item => (Func<DbContext>)(() => CreateContext(item)))
+            .ToArray());
+    }
+
+    /// <summary>
     /// Checks the context's full design-time model against the given rules, independently of any
     /// rules registered on the context itself, and throws if any are broken.
     /// </summary>
@@ -164,7 +235,8 @@ public static class ModelRuleVerifier
             ?? contextType.GetConstructor([typeof(DbContextOptions)])
             ?? throw new ArgumentException(
                 $"{contextType.Name} has no public constructor that takes only its "
-                + "DbContextOptions. Create the context yourself and pass it to Verify instead.",
+                + "DbContextOptions. Create the context yourself and pass it to Verify, or pass "
+                + "a factory to VerifyAll.",
                 nameof(options));
 
         return (DbContext)constructor.Invoke(

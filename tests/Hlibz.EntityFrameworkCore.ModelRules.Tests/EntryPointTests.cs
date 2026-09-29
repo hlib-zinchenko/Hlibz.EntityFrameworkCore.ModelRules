@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Hlibz.EntityFrameworkCore.ModelRules.Tests;
@@ -125,9 +126,7 @@ public sealed class EntryPointTests
     public void Validate_WithOptions_ChecksRulesPassedIn()
     {
         IReadOnlyList<ModelRuleViolation> violations = ModelRuleVerifier.Validate(
-            new DbContextOptionsBuilder<PassingOptionsDbContext>()
-                .UseNpgsql("Server=localhost")
-                .Options,
+            PassingOptionsDbContext.CreateOptions(),
             rules => rules.EnumsStoredAsStrings());
 
         Assert.Equal("Blog.Status", Assert.Single(violations).Target);
@@ -157,6 +156,80 @@ public sealed class EntryPointTests
         ArgumentException exception =
             Assert.Throws<ArgumentException>(() => ModelRuleVerifier.Verify(options));
         Assert.Contains("no public constructor", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerifyAll_WithFailingContexts_ReportsEveryContextInOneException()
+    {
+        ModelRuleViolationException exception = Assert.Throws<ModelRuleViolationException>(
+            () => ModelRuleVerifier.VerifyAll(
+                () => new ServiceDbContext(ServiceDbContext.CreateOptions(), new Clock()),
+                () => new OptionsDbContext(OptionsDbContext.CreateOptions()),
+                () => new ServiceDbContext(
+                    ServiceDbContext.CreateOptions(),
+                    new Clock(),
+                    rules => rules.NoShadowProperties(except => except.Entity<Post>()))));
+
+        Assert.Equal(2, exception.Violations.Count);
+        Assert.Equal(
+            """
+            2 of 3 EF Core models have model rule violations:
+            ServiceDbContext has 1 violation:
+              - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a property named 'BlogId' to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
+            OptionsDbContext has 1 violation:
+              - MR001 NoShadowProperties: Post.BlogId: shadow foreign key created by convention for the relationship to Blog. Add a property named 'BlogId' to the entity, or configure the relationship with HasForeignKey(...) pointing at an existing one.
+            """,
+            exception.Message.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public void VerifyAll_WithPassingContexts_DoesNotThrow()
+    {
+        ModelRuleVerifier.VerifyAll(
+            () => new ServiceDbContext(
+                ServiceDbContext.CreateOptions(),
+                new Clock(),
+                rules => rules.NoShadowProperties(except => except.Entity<Post>())));
+    }
+
+    [Fact]
+    public void VerifyAll_WithContextWithoutRegisteredRules_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => ModelRuleVerifier.VerifyAll(
+                () => new PassingOptionsDbContext(PassingOptionsDbContext.CreateOptions())));
+
+        Assert.Contains(
+            "PassingOptionsDbContext has no model rules registered",
+            exception.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerifyAll_WithOptions_CreatesEachContext()
+    {
+        ModelRuleViolationException exception = Assert.Throws<ModelRuleViolationException>(
+            () => ModelRuleVerifier.VerifyAll(OptionsDbContext.CreateOptions()));
+
+        Assert.StartsWith(
+            "1 of 1 EF Core model has model rule violations:",
+            exception.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerifyAll_WithNoContexts_ThrowsInsteadOfPassingSilently()
+    {
+        Assert.Throws<ArgumentException>(
+            () => ModelRuleVerifier.VerifyAll(Array.Empty<Func<DbContext>>()));
+        Assert.Throws<ArgumentException>(
+            () => ModelRuleVerifier.VerifyAll(Array.Empty<DbContextOptions>()));
+    }
+
+    [Fact]
+    public void VerifyAll_WithFactoryReturningNull_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => ModelRuleVerifier.VerifyAll(() => null!));
     }
 
     [Fact]
@@ -204,6 +277,42 @@ public sealed class EntryPointTests
     /// </summary>
     public sealed class PassingOptionsDbContext(DbContextOptions options) : DbContext(options)
     {
+        public static DbContextOptions<PassingOptionsDbContext> CreateOptions() =>
+            new DbContextOptionsBuilder<PassingOptionsDbContext>()
+                .UseNpgsql("Server=localhost")
+                .Options;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            Models.Blog(modelBuilder);
+    }
+
+    public sealed class Clock
+    {
+        public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Takes a service besides its options, as contexts in a modular monolith often do, so only a
+    /// factory can create it. Each instance builds its own model, since the rules vary per test.
+    /// </summary>
+    public sealed class ServiceDbContext(
+        DbContextOptions<ServiceDbContext> options,
+        Clock clock,
+        Action<ModelRulesBuilder>? rules = null) : DbContext(options)
+    {
+        public Clock Clock { get; } = clock;
+
+        public static DbContextOptions<ServiceDbContext> CreateOptions() =>
+            new DbContextOptionsBuilder<ServiceDbContext>()
+                .UseNpgsql("Server=localhost")
+                .ReplaceService<
+                    IModelCacheKeyFactory,
+                    TestDbContext.PerInstanceModelCacheKeyFactory>()
+                .Options;
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder conventions) =>
+            conventions.UseModelRules(rules ?? (builder => builder.NoShadowProperties()));
+
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             Models.Blog(modelBuilder);
     }

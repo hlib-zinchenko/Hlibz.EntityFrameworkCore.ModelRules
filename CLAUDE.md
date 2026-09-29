@@ -9,7 +9,7 @@ conventions (shadow properties, naming, decimal precision, string lengths, nulla
 storage, schemas, aggregate boundaries, query filters, delete behaviors, redundant indexes,
 identifier lengths). Rules run while EF
 builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
-(`ModelRuleVerifier.Verify`).
+(`ModelRuleVerifier.Verify`, or `VerifyAll` for several contexts).
 
 ## Requires
 
@@ -71,6 +71,11 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
 - **The static entry point is `ModelRuleVerifier`, not `ModelRules`.** A class named like a
   namespace segment breaks consumers whose own namespace has that segment (e.g.
   `Acme.ModelRules.Tests`: `ModelRules.Verify` resolves to the namespace, CS0234).
+- **`VerifyAll` takes factories, not types.** Contexts in real apps take services besides
+  their options, and filling those with defaults or nulls breaks contexts that check their
+  arguments. It checks every context before throwing one `ModelRuleViolationException` grouped
+  by context; a context with no rules registered still throws `InvalidOperationException` at
+  once, since that's a setup mistake rather than a violation.
 - **Rules take `IReadOnlyModel`.** That's the interface common to the finalizing
   `IConventionModel` and the design-time `IModel`, so the same rule code runs in both places. Only
   use read-only metadata APIs in rules.
