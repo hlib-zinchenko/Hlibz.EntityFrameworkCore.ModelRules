@@ -1,3 +1,5 @@
+![Hlibz.EntityFrameworkCore.ModelRules icon](https://raw.githubusercontent.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/main/docs/icon.png)
+
 # Hlibz.EntityFrameworkCore.ModelRules
 
 Enforce your team's conventions on an EF Core model. The model fails to build, at startup or in a

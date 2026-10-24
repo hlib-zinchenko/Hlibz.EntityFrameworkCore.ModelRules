@@ -202,3 +202,7 @@ To publish, don't bump anything in the csproj (the tag drives the version). Just
 - No StyleCop/SonarAnalyzer: this is a small single-purpose package, kept lightweight on purpose.
   `TreatWarningsAsErrors` is still on, and `GenerateDocumentationFile` means every public member
   needs an XML doc comment.
+- The package icon's source is `docs/icon.svg`. `docs/icon.png` (128x128) is packed as
+  `PackageIcon` and shown at the top of README through its `raw.githubusercontent.com` URL on
+  `main`, because nuget.org renders neither relative image paths nor raw HTML. So a changed
+  icon shows in README only once it's pushed.
