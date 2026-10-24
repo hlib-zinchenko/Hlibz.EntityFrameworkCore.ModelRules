@@ -41,6 +41,21 @@ jobs:
       - name: Test
         run: dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests --no-build --configuration Release
 
+      - name: Pack
+        run: dotnet pack src/Hlibz.EntityFrameworkCore.ModelRules --no-build --configuration Release --output ./artifacts
+
+      # The README and icon nuget.org shows: at the package root and referenced by the nuspec,
+      # since dropping PackageIcon or PackageReadmeFile still packs.
+      - name: Package contents
+        run: |
+          unzip -l ./artifacts/*.nupkg > contents.txt
+          cat contents.txt
+          grep -qE " README\.md$" contents.txt
+          grep -qE " icon\.png$" contents.txt
+          unzip -p ./artifacts/*.nupkg '*.nuspec' > package.nuspec
+          grep -q "<readme>README.md</readme>" package.nuspec
+          grep -q "<icon>icon.png</icon>" package.nuspec
+
   # Real PostgreSQL, SQL Server and MySQL in Docker (Testcontainers), checking that what the rules
   # see in the model is what the databases actually create. EF Core 10 only; the model-level
   # coverage of every EF Core major is in the job above. Only starts once that job passes, so a
