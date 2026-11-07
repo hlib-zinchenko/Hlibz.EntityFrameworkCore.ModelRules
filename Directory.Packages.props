@@ -3,20 +3,20 @@
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
     <ItemGroup>
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-        <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
-        <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0" />
-        <PackageVersion Include="Testcontainers.MySql" Version="4.15.0" />
-        <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
-        <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-        <PackageVersion Include="xunit.v3" Version="4.0.1" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+        <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+        <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+        <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
+        <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+        <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+        <PackageVersion Include="xunit.v3" Version="4.0.2" />
         <!--
             Samples-only: design-time tooling for `dotnet ef`. Unconditioned, not per-TFM like the
             EF Core packages below, because the samples project is single-targeted (net10.0 only,
             via its own TargetFramework), and its TargetFramework isn't set yet when a per-TFM
             Condition here would need to see it.
         -->
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
     </ItemGroup>
 
     <!--
@@ -65,6 +65,6 @@
             GHSA-2fmv-rv2c-59x7; patched in 9.0.21). net10.0 only, since EF Core 8/9's SqlClient
             doesn't depend on it. Drop it once the provider's SqlClient depends on 9.0.21 or later.
         -->
-        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     </ItemGroup>
 </Project>
