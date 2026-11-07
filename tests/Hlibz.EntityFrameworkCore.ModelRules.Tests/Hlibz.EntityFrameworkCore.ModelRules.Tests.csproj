@@ -21,6 +21,8 @@
 
   <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
+    <!-- Not used directly: pins a patched MySqlConnector, see Directory.Packages.props. -->
+    <PackageReference Include="MySqlConnector" />
   </ItemGroup>
 
   <!-- Not used directly: pins a patched Pkcs, see Directory.Packages.props. -->
