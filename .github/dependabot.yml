@@ -1,0 +1,34 @@
+# Weekly, grouped: one PR for all NuGet updates, one for all GitHub Actions.
+# CI runs the tests on every PR, so a green check is what makes these safe to merge.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      nuget:
+        patterns: ["*"]
+    # One EF Core major per target framework (see Directory.Packages.props): a new major
+    # would drop the older TFMs, so majors are a manual decision, not a bot PR.
+    ignore:
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "MySql.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Pomelo.*"
+        update-types: ["version-update:semver-major"]
+  # Actions run the NuGet release, so they get updated too.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
