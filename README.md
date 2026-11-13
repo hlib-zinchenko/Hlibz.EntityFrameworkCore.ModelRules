@@ -231,8 +231,8 @@ A few details:
   `NamingScope.Tables | NamingScope.Columns`. `NamingScope.All`, the default, also covers kinds
   that later versions add.
 - **JSON columns are skipped by the column facet rules.** That covers owned types mapped with
-  `ToJson()` and JSON complex types on EF Core 10. Their properties aren't columns. Naming still
-  checks the JSON container column itself. MR006 is the exception: EF Core writes an enum into
+  `ToJson()` and JSON complex types on EF Core 10 and later. Their properties aren't columns. Naming
+  still checks the JSON container column itself. MR006 is the exception: EF Core writes an enum into
   a JSON document as a number too, unless it's converted, so enums inside JSON are checked. The
   integration tests read the stored JSON back from PostgreSQL and SQL Server to confirm it.
 - **MR011 fires on every optional relationship you haven't configured**, because
@@ -343,15 +343,15 @@ a compiled model the test is where the rules are enforced. `dotnet ef dbcontext 
 
 ## Compatibility
 
-- EF Core 8, 9 and 10. The package has one build per EF Core major (`net8.0`, `net9.0`,
-  `net10.0`), and CI tests each one.
+- EF Core 8, 9, 10 and 11. The package has one build per EF Core major (`net8.0`, `net9.0`,
+  `net10.0`, `net11.0`), and CI tests each one.
 - A recent EF Core patch. Each build requires at least the EF Core patch it was built and
   tested against; the package's NuGet page lists it under Dependencies. If restoring fails with
   `NU1605` (a package downgrade), update your EF Core packages to that patch or later. Microsoft
   only supports the latest patch of each EF Core major anyway.
 - Provider-neutral: rules only read EF Core's relational metadata. The test suite builds the same
   models on PostgreSQL (Npgsql), SQL Server, SQLite and MySQL (Oracle's `MySql.EntityFrameworkCore`
-  on EF Core 8-10; Pomelo on EF Core 8-9, since Pomelo has no EF Core 10 release yet) and
+  on EF Core 8-11; Pomelo on EF Core 8-9, since Pomelo has no EF Core 10 or 11 release yet) and
   checks that every provider reports exactly the same violations.
 - Provider features that add shadow properties by design are allowed, e.g. SQL Server temporal
   tables' period columns.

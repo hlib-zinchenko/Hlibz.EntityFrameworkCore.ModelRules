@@ -19,7 +19,18 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
+  <!--
+    Npgsql 11.0.0-rc.3 pins EF Core to exactly 11.0.0-rc.3, and the net11.0 tests run it on EF
+    Core 11.0.0, which builds its models fine. Restore reads NoWarn per project, not per target
+    framework, hence project-wide; this project is never packed. Drop it once Npgsql ships a
+    stable EF Core 11 release.
+  -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1608</NoWarn>
+  </PropertyGroup>
+
+  <!-- Pomelo has no EF Core 10 or 11 release yet: add it back per TFM once one ships. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0'">
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
     <!-- Not used directly: pins a patched MySqlConnector, see Directory.Packages.props. -->
     <PackageReference Include="MySqlConnector" />

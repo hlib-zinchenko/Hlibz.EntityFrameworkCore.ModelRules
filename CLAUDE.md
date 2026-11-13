@@ -13,7 +13,7 @@ builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
 
 ## Requires
 
-* .NET 10 SDK, plus the .NET 8 and 9 runtimes to run every test target.
+* .NET 11 SDK, plus the .NET 8, 9 and 10 runtimes to run every test target.
 
 ## Commands
 
@@ -21,7 +21,7 @@ builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
 # Build everything
 dotnet build
 
-# Run all tests (all three target frameworks)
+# Run all tests (all four target frameworks)
 dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests
 
 # One target framework only
@@ -44,12 +44,17 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
 ## Architecture
 
 - **Multi-targeting = one EF Core major per TFM.** `Directory.Build.props` sets
-  `net8.0;net9.0;net10.0` for every project, and `Directory.Packages.props` pins
-  `Microsoft.EntityFrameworkCore.Relational` (and the test-only Npgsql provider) per TFM:
-  8.0.x on net8.0, 9.0.x on net9.0, 10.0.x on net10.0. So each build of the library is compiled
-  and tested against its own EF major, and the package's dependency group for each TFM pulls the
-  matching EF. Use `#if NET10_0_OR_GREATER` for APIs that only exist in newer EF majors (see
-  `ModelWalker.IsJson` and the JSON complex-type container column in `ModelIdentifiers`).
+  `net8.0;net9.0;net10.0;net11.0` for every project, and `Directory.Packages.props` pins
+  `Microsoft.EntityFrameworkCore.Relational` (and the test-only providers) per TFM: 8.0.x on
+  net8.0, 9.0.x on net9.0, 10.0.x on net10.0, 11.0.x on net11.0. On net11.0 the Npgsql and
+  Oracle MySQL providers are still prereleases (test-only, so that's fine); the test project
+  suppresses NU1608 because Npgsql's rc pins EF Core to its own rc. So each build of the
+  library is compiled and tested against its own EF major, and the package's dependency group
+  for each TFM pulls the matching EF. Use `#if NET10_0_OR_GREATER` for APIs that only exist in
+  newer EF majors (see `ModelWalker.IsJson` and the JSON complex-type container column in
+  `ModelIdentifiers`). From EF Core 11 `IReadOnlyIndex.Properties` is a list of
+  `IReadOnlyPropertyBase` (an index can hold a JSON complex property), so take index members as
+  `IEnumerable<IReadOnlyPropertyBase>`.
 - **The Relational pin is the package's minimum EF Core version.** Its version becomes the
   `>=` floor in the published package's dependency group for that TFM, so raising it forces every
   consumer onto that patch. A consumer whose project references `Microsoft.EntityFrameworkCore`
