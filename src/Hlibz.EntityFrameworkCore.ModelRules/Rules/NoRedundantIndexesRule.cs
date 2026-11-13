@@ -149,14 +149,20 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
         }
     }
 
+    /// <remarks>
+    /// <see langword="null"/> when a member isn't a scalar property mapped to <paramref name="table"/>:
+    /// from EF Core 11 an index can also hold a complex property, which has no single column, so
+    /// such an index is left out of the comparison rather than guessed at.
+    /// </remarks>
     private static List<string>? Columns(
-        IReadOnlyList<IReadOnlyProperty> properties,
+        IEnumerable<IReadOnlyPropertyBase> properties,
         StoreObjectIdentifier table)
     {
         List<string> columns = [];
-        foreach (IReadOnlyProperty property in properties)
+        foreach (IReadOnlyPropertyBase member in properties)
         {
-            if (property.GetColumnName(table) is not { } column)
+            if (member is not IReadOnlyProperty property
+                || property.GetColumnName(table) is not { } column)
             {
                 return null;
             }

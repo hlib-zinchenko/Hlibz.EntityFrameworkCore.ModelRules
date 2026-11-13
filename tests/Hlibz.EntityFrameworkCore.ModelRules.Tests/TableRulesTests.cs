@@ -319,4 +319,29 @@ public sealed class TableRulesTests
                 context,
                 rules => rules.MaxIdentifierLength(63, NamingScope.None)));
     }
+
+#if NET11_0_OR_GREATER
+    // From EF Core 11 an index can hold a complex property (one mapped to a single JSON column),
+    // and IReadOnlyIndex.Properties became a list of IReadOnlyPropertyBase; 1.0.0 crashed on it.
+    [Fact]
+    public void MaxIdentifierLength_WithJsonComplexPropertyInIndex_ReportsIndexName()
+    {
+        string longIndex = "ix_" + new string('i', 70);
+
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Blog>(blog =>
+            {
+                blog.ComplexProperty(x => x.Address, address => address.ToJson());
+                blog.HasIndex(x => new { x.Name, x.Address }).HasDatabaseName(longIndex);
+            }),
+            rules => rules.MaxIdentifierLength(63, NamingScope.Indexes));
+
+        ModelRuleViolation violation = Assert.Single(violations);
+        Assert.Equal("Blog.Name, Address", violation.Target);
+        Assert.StartsWith(
+            $"index name '{longIndex}' is 73",
+            violation.Message,
+            StringComparison.Ordinal);
+    }
+#endif
 }

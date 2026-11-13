@@ -24,10 +24,11 @@
         tested) against the EF Core major that ships for it, so the package's dependency group for
         that TFM pulls the matching EF Core. The providers are test-only: tests build every model
         on each of them (no database needed) to prove the rules are provider-neutral. Pomelo has no
-        EF Core 10 release yet, so it only covers net8.0/net9.0; Oracle's MySql.EntityFrameworkCore
-        covers MySQL on all three. Sqlite.Core plus an explicit SQLitePCLRaw bundle rather than
-        the Sqlite package: the provider loads native SQLite even just to build a model, and the
-        bundle the Sqlite package pulls in (2.1.6-2.1.11) ships a known-vulnerable SQLite.
+        EF Core 10 or 11 release yet, so it only covers net8.0/net9.0; Oracle's
+        MySql.EntityFrameworkCore covers MySQL on all four. Sqlite.Core plus an explicit
+        SQLitePCLRaw bundle rather than the Sqlite package: the provider loads native SQLite even
+        just to build a model, and the bundle the Sqlite package pulls in (2.1.6-2.1.11) ships a
+        known-vulnerable SQLite.
     -->
     <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.31" />
@@ -66,5 +67,16 @@
             doesn't depend on it. Drop it once the provider's SqlClient depends on 9.0.21 or later.
         -->
         <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="11.0.0" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="11.0.0" />
+        <!--
+            Test-only, never packed, so a prerelease is fine here: Npgsql and Oracle's MySQL
+            provider have no stable EF Core 11 release yet. Move them to stable once they ship.
+        -->
+        <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.3" />
+        <PackageVersion Include="MySql.EntityFrameworkCore" Version="11.0.0-preview" />
     </ItemGroup>
 </Project>

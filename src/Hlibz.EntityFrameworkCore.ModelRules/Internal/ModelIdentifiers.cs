@@ -361,6 +361,6 @@ internal static class ModelIdentifiers
             table.DisplayName());
     }
 
-    private static string PropertyNames(IReadOnlyList<IReadOnlyProperty> properties) =>
+    private static string PropertyNames(IEnumerable<IReadOnlyPropertyBase> properties) =>
         string.Join(", ", properties.Select(property => property.Name));
 }

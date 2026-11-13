@@ -135,4 +135,43 @@ public sealed class NoRedundantIndexesTests
             + "Remove it.",
             Assert.Single(violations).Message);
     }
+
+#if NET11_0_OR_GREATER
+    // From EF Core 11 an index can hold a complex property (one mapped to a single JSON column),
+    // and IReadOnlyIndex.Properties became a list of IReadOnlyPropertyBase; 1.0.0 crashed on it.
+    [Fact]
+    public void NoRedundantIndexes_WithJsonComplexPropertyInIndex_SkipsThatIndex()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Blog>(blog =>
+            {
+                blog.ComplexProperty(x => x.Address, address => address.ToJson());
+                blog.HasIndex(x => x.Name);
+                blog.HasIndex(x => new { x.Name, x.Address });
+                blog.HasIndex(x => x.Address);
+            }),
+            rules => rules.NoRedundantIndexes());
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void NoRedundantIndexes_WithComplexTypePropertyPrefix_ReportsShorterIndex()
+    {
+        IReadOnlyList<ModelRuleViolation> violations = TestDbContext.Validate(
+            model => model.Entity<Blog>(blog =>
+            {
+                blog.ComplexProperty(x => x.Address);
+                blog.HasIndex(x => x.Address.City);
+                blog.HasIndex(x => new { x.Address.City, x.Name });
+            }),
+            rules => rules.NoRedundantIndexes());
+
+        Assert.Equal(
+            "index 'IX_Blog_Address_City' (Address_City) is a leading prefix of index "
+            + "'IX_Blog_Address_City_Name' (Address_City, Name), which serves the same lookups. "
+            + "Remove it.",
+            Assert.Single(violations).Message);
+    }
+#endif
 }
