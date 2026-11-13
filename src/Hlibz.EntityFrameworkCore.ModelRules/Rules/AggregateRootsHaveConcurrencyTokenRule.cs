@@ -27,12 +27,15 @@ internal sealed class AggregateRootsHaveConcurrencyTokenRule(Func<Type, bool> is
                 continue;
             }
 
+            string message =
+                "aggregate root has no concurrency token, so concurrent updates silently "
+                + "overwrite each other. Add a row version (IsRowVersion(), or xmin on "
+                + "PostgreSQL), or mark a property IsConcurrencyToken().";
+
             yield return Violation(
                 entityType,
                 null,
-                "aggregate root has no concurrency token, so concurrent updates silently "
-                + "overwrite each other. Add a row version (IsRowVersion(), or xmin on "
-                + "PostgreSQL), or mark a property IsConcurrencyToken().");
+                message);
         }
     }
 }

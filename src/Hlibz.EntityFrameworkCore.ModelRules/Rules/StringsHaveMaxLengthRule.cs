@@ -27,11 +27,14 @@ internal sealed class StringsHaveMaxLengthRule() : ModelRule("MR004", "StringsHa
                 ? string.Empty
                 : $" (converted from {clrType.Name})";
 
+            string message =
+                $"string column{converted} has no max length. Configure HasMaxLength(...), or "
+                + "HasColumnType(...) if an unbounded type is intended.";
+
             yield return Violation(
                 property.EntityType,
                 property.Path,
-                $"string column{converted} has no max length. Configure HasMaxLength(...), or "
-                + "HasColumnType(...) if an unbounded type is intended.");
+                message);
         }
     }
 }

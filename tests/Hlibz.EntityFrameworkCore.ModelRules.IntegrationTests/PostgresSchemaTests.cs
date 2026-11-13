@@ -15,12 +15,12 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.Equal("Dog.Weight", Assert.Single(violations).Target);
-        object?[] column = Assert.Single(await DatabaseFixture.QueryAsync(
-            context,
+        string sql =
             """
             select data_type::text, numeric_precision, numeric_scale
             from information_schema.columns where column_name = 'Weight'
-            """));
+            """;
+        object?[] column = Assert.Single(await DatabaseFixture.QueryAsync(context, sql));
         Assert.Equal(["numeric", null, null], column);
     }
 
@@ -69,12 +69,12 @@ public sealed class PostgresSchemaTests(PostgresFixture database)
         string[] reported = ReportedNames(violations);
         Assert.Equal(["OrderNumbers", longName[..62] + "~"], reported);
 
-        IReadOnlyList<object?[]> sequences = await DatabaseFixture.QueryAsync(
-            context,
+        string sql =
             """
             select sequence_name::text from information_schema.sequences
             where sequence_schema = current_schema()
-            """);
+            """;
+        IReadOnlyList<object?[]> sequences = await DatabaseFixture.QueryAsync(context, sql);
         Assert.All(
             reported,
             name => Assert.Contains(sequences, sequence => (string?)sequence[0] == name));

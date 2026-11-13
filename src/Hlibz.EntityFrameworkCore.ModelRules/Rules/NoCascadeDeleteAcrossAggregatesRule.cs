@@ -29,14 +29,19 @@ internal sealed class NoCascadeDeleteAcrossAggregatesRule(Func<Type, bool> isAgg
                     continue;
                 }
 
-                yield return Violation(
-                    entityType,
+                string memberPath =
                     foreignKey.DependentToPrincipal?.Name
-                    ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name)),
+                    ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name));
+                string message =
                     $"deleting {foreignKey.PrincipalEntityType.DisplayName()} rows cascades to "
                     + $"{entityType.DisplayName()}, a separate aggregate root. Configure "
                     + "OnDelete(DeleteBehavior.Restrict) (or SetNull for an optional "
-                    + "relationship).");
+                    + "relationship).";
+
+                yield return Violation(
+                    entityType,
+                    memberPath,
+                    message);
             }
         }
     }

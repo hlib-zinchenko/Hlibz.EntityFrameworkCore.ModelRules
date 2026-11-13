@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Hlibz.EntityFrameworkCore.ModelRules;
@@ -6,6 +7,10 @@ namespace Hlibz.EntityFrameworkCore.ModelRules;
 /// Thrown when an EF Core model breaks one or more model rules. Carries every violation found,
 /// not just the first.
 /// </summary>
+[SuppressMessage(
+    "Design",
+    "CA1032:Implement standard exception constructors",
+    Justification = "It always carries the violations; one without them would be meaningless.")]
 public sealed class ModelRuleViolationException : Exception
 {
     /// <summary>
@@ -20,8 +25,11 @@ public sealed class ModelRuleViolationException : Exception
     }
 
     /// <summary>
-    /// Initializes a new instance for the violations of several contexts, grouped by context.
+    /// Initializes a new instance of the <see cref="ModelRuleViolationException"/> class for the
+    /// violations of several contexts, grouped by context.
     /// </summary>
+    /// <param name="failures">Each failing context type with its violations.</param>
+    /// <param name="contextCount">How many contexts were checked in all.</param>
     internal ModelRuleViolationException(
         IReadOnlyList<(Type ContextType, IReadOnlyList<ModelRuleViolation> Violations)> failures,
         int contextCount)

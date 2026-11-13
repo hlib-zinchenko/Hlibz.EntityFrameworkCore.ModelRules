@@ -56,10 +56,13 @@ internal sealed class SingleSchemaRule(string? expectedSchema) : ModelRule("MR00
                       + "schema of its own."
                     : string.Empty;
 
+                string message =
+                    $"mapped to schema '{schema ?? DefaultSchemaName}', but the model's tables "
+                    + $"belong in '{expected ?? DefaultSchemaName}'.{hint}";
+
                 yield return Violation(
                     identifier,
-                    $"mapped to schema '{schema ?? DefaultSchemaName}', but the model's tables "
-                    + $"belong in '{expected ?? DefaultSchemaName}'.{hint}");
+                    message);
             }
         }
     }

@@ -38,13 +38,16 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
                     ? "has the same columns as"
                     : "is a leading prefix of";
 
+                string message =
+                    $"index '{index.DatabaseName}' ({string.Join(", ", index.Columns)}) {relation} "
+                    + $"{covering.Kind} '{covering.DatabaseName}' "
+                    + $"({string.Join(", ", covering.Columns)}), which serves the same lookups. "
+                    + "Remove it.";
+
                 yield return Violation(
                     index.Index.DeclaringEntityType,
                     string.Join(", ", index.Index.Properties.Select(property => property.Name)),
-                    $"index '{index.Name}' ({string.Join(", ", index.Columns)}) {relation} "
-                    + $"{covering.Kind} '{covering.Name}' "
-                    + $"({string.Join(", ", covering.Columns)}), which serves the same lookups. "
-                    + "Remove it.");
+                    message);
             }
         }
     }
@@ -73,7 +76,7 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
         // then the name that sorts first.
         if (sameColumns && other.IsUnique == index.IsUnique && other.Index is not null)
         {
-            return string.CompareOrdinal(other.Name, index.Name) < 0;
+            return string.CompareOrdinal(other.DatabaseName, index.DatabaseName) < 0;
         }
 
         return true;
@@ -84,7 +87,8 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
     /// table splitting), each once. Under TPC each concrete table has its own, and an entity type
     /// split across tables contributes to each of them.
     /// </summary>
-    private static IEnumerable<List<TableIndex>> IndexesByTable(IReadOnlyModel model)
+    private static Dictionary<StoreObjectIdentifier, List<TableIndex>>.ValueCollection IndexesByTable(
+        IReadOnlyModel model)
     {
         Dictionary<StoreObjectIdentifier, List<TableIndex>> tables = [];
 
@@ -117,8 +121,8 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
         foreach (IReadOnlyKey key in entityType.GetKeys())
         {
             if (key.GetName(table) is { } name
-                && Columns(key.Properties, table) is { } columns
-                && !indexes.Exists(index => index.Name == name))
+                && ColumnNames(key.Properties, table) is { } columns
+                && !indexes.Exists(index => index.DatabaseName == name))
             {
                 indexes.Add(new TableIndex(
                     name,
@@ -134,16 +138,16 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
         foreach (IReadOnlyIndex index in entityType.GetIndexes())
         {
             if (index.GetDatabaseName(table) is { } name
-                && Columns(index.Properties, table) is { } columns
-                && !indexes.Exists(existing => existing.Name == name))
+                && ColumnNames(index.Properties, table) is { } columns
+                && !indexes.Exists(existing => existing.DatabaseName == name))
             {
                 indexes.Add(new TableIndex(
                     name,
                     index.IsUnique ? "unique index" : "index",
                     columns,
-                    Descending(index, columns.Count),
+                    SortOrders(index, columns.Count),
                     index.IsUnique,
-                    IsComparable(index),
+                    CanCompare(index),
                     index));
             }
         }
@@ -154,7 +158,7 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
     /// from EF Core 11 an index can also hold a complex property, which has no single column, so
     /// such an index is left out of the comparison rather than guessed at.
     /// </remarks>
-    private static List<string>? Columns(
+    private static List<string>? ColumnNames(
         IEnumerable<IReadOnlyPropertyBase> properties,
         StoreObjectIdentifier table)
     {
@@ -177,7 +181,7 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
     /// Per-column sort order. EF Core stores <see langword="null"/> for all ascending and an
     /// empty list for all descending.
     /// </summary>
-    private static List<bool> Descending(IReadOnlyIndex index, int count) =>
+    private static List<bool> SortOrders(IReadOnlyIndex index, int count) =>
         index.IsDescending switch
         {
             null => [.. Enumerable.Repeat(false, count)],
@@ -190,12 +194,12 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
     /// included columns, an index method, ...) that could make it serve lookups another index
     /// doesn't.
     /// </summary>
-    private static bool IsComparable(IReadOnlyIndex index) =>
+    private static bool CanCompare(IReadOnlyIndex index) =>
         index.GetFilter() is null
         && index.GetAnnotations().All(annotation =>
             annotation.Name.StartsWith("Relational:", StringComparison.Ordinal));
 
-    /// <param name="Name">The index or key name.</param>
+    /// <param name="DatabaseName">The index or key name.</param>
     /// <param name="Kind">What to call it in a message, e.g. <c>primary key</c>.</param>
     /// <param name="Columns">The column names, in order.</param>
     /// <param name="Descending">Per column, whether it's sorted descending.</param>
@@ -203,7 +207,7 @@ internal sealed class NoRedundantIndexesRule() : ModelRule("MR014", "NoRedundant
     /// <param name="IsComparable">Whether it may be compared with others at all.</param>
     /// <param name="Index">The index, or <see langword="null"/> for a key.</param>
     private sealed record TableIndex(
-        string Name,
+        string DatabaseName,
         string Kind,
         List<string> Columns,
         List<bool> Descending,

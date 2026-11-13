@@ -353,6 +353,15 @@ public sealed class ModelRulesBuilder
         return this;
     }
 
+    internal static ModelRuleSet Build(Action<ModelRulesBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        ModelRulesBuilder builder = new();
+        configure(builder);
+        return new ModelRuleSet([.. builder._rules], builder._globalExclusions);
+    }
+
     /// <summary>
     /// A rule with no identifiers in scope could never report anything, so it would pass
     /// without checking the model.
@@ -366,14 +375,5 @@ public sealed class ModelRulesBuilder
                 scope,
                 "The scope has no kinds of identifiers in it, so the rule would check nothing.");
         }
-    }
-
-    internal static ModelRuleSet Build(Action<ModelRulesBuilder> configure)
-    {
-        ArgumentNullException.ThrowIfNull(configure);
-
-        ModelRulesBuilder builder = new();
-        configure(builder);
-        return new ModelRuleSet([.. builder._rules], builder._globalExclusions);
     }
 }

@@ -59,6 +59,47 @@ public static class ModelRuleVerifier
     }
 
     /// <summary>
+    /// Checks the context's full design-time model against the given rules, independently of any
+    /// rules registered on the context itself, and throws if any are broken.
+    /// </summary>
+    /// <param name="context">The context whose model to check.</param>
+    /// <param name="configure">Chooses the rules to check.</param>
+    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
+    public static void Verify(DbContext context, Action<ModelRulesBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ModelRulesBuilder.Build(configure).Enforce(GetDesignTimeModel(context));
+    }
+
+    /// <summary>
+    /// Creates the context the options were built for, then checks its full design-time model
+    /// against the given rules, independently of any rules registered on the context itself.
+    /// </summary>
+    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>.
+    /// The context must have a public constructor that takes only them.</param>
+    /// <param name="configure">Chooses the rules to check.</param>
+    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
+    /// <exception cref="ArgumentException">
+    /// The options don't name a context type that can be created from them.
+    /// </exception>
+    public static void Verify(DbContextOptions options, Action<ModelRulesBuilder> configure)
+    {
+        using DbContext context = CreateContext(options);
+        Verify(context, configure);
+    }
+
+    /// <summary>
+    /// Checks a model against the given rules and throws if any are broken.
+    /// </summary>
+    /// <param name="model">The model to check - use the design-time model
+    /// (<c>context.GetService&lt;IDesignTimeModel&gt;().Model</c>), since the runtime
+    /// <c>context.Model</c> no longer carries all the metadata the rules read.</param>
+    /// <param name="configure">Chooses the rules to check.</param>
+    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
+    public static void Verify(IReadOnlyModel model, Action<ModelRulesBuilder> configure) =>
+        ModelRulesBuilder.Build(configure).Enforce(model);
+
+    /// <summary>
     /// Creates each context in turn and checks it as <see cref="Verify(DbContext)"/> does, then
     /// throws one exception listing the violations of every context that broke a rule. Use it
     /// for several contexts, such as the modules of a modular monolith, including contexts whose
@@ -86,7 +127,11 @@ public static class ModelRuleVerifier
         List<(Type ContextType, IReadOnlyList<ModelRuleViolation> Violations)> failures = [];
         foreach (Func<DbContext> createContext in createContexts)
         {
-            ArgumentNullException.ThrowIfNull(createContext, nameof(createContexts));
+            if (createContext is null)
+            {
+                throw new ArgumentNullException(nameof(createContexts), "A context factory is null.");
+            }
+
             using DbContext context = createContext()
                 ?? throw new ArgumentException(
                     "A context factory returned null.",
@@ -128,47 +173,6 @@ public static class ModelRuleVerifier
             .Select(item => (Func<DbContext>)(() => CreateContext(item)))
             .ToArray());
     }
-
-    /// <summary>
-    /// Checks the context's full design-time model against the given rules, independently of any
-    /// rules registered on the context itself, and throws if any are broken.
-    /// </summary>
-    /// <param name="context">The context whose model to check.</param>
-    /// <param name="configure">Chooses the rules to check.</param>
-    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
-    public static void Verify(DbContext context, Action<ModelRulesBuilder> configure)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ModelRulesBuilder.Build(configure).Enforce(GetDesignTimeModel(context));
-    }
-
-    /// <summary>
-    /// Creates the context the options were built for, then checks its full design-time model
-    /// against the given rules, independently of any rules registered on the context itself.
-    /// </summary>
-    /// <param name="options">Options built with <c>DbContextOptionsBuilder&lt;TContext&gt;</c>.
-    /// The context must have a public constructor that takes only them.</param>
-    /// <param name="configure">Chooses the rules to check.</param>
-    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
-    /// <exception cref="ArgumentException">
-    /// The options don't name a context type that can be created from them.
-    /// </exception>
-    public static void Verify(DbContextOptions options, Action<ModelRulesBuilder> configure)
-    {
-        using DbContext context = CreateContext(options);
-        Verify(context, configure);
-    }
-
-    /// <summary>
-    /// Checks a model against the given rules and throws if any are broken.
-    /// </summary>
-    /// <param name="model">The model to check - use the design-time model
-    /// (<c>context.GetService&lt;IDesignTimeModel&gt;().Model</c>), since the runtime
-    /// <c>context.Model</c> no longer carries all the metadata the rules read.</param>
-    /// <param name="configure">Chooses the rules to check.</param>
-    /// <exception cref="ModelRuleViolationException">The model breaks a rule.</exception>
-    public static void Verify(IReadOnlyModel model, Action<ModelRulesBuilder> configure) =>
-        ModelRulesBuilder.Build(configure).Enforce(model);
 
     /// <summary>
     /// Checks the context's full design-time model against the given rules and returns every

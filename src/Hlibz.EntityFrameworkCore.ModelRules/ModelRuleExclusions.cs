@@ -123,10 +123,8 @@ public sealed class ModelRuleExclusions
     private static string GetMemberPath(LambdaExpression lambda, string paramName)
     {
         Expression body = lambda.Body;
-        while (body is UnaryExpression
-               {
-                   NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked,
-               } unary)
+        while (body is UnaryExpression unary
+               && unary.NodeType is ExpressionType.Convert or ExpressionType.ConvertChecked)
         {
             body = unary.Operand;
         }

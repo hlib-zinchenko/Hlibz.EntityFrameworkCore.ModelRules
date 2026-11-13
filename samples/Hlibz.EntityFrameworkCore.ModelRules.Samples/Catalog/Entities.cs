@@ -1,5 +1,12 @@
 namespace Hlibz.EntityFrameworkCore.ModelRules.Samples.Catalog;
 
+public enum BookGenre
+{
+    Fiction,
+    NonFiction,
+    Poetry,
+}
+
 /// <summary>
 /// Marker for the aggregate rules: roots refer to each other by key only (MR012), never delete
 /// each other by cascade (MR008), and each has a concurrency token (MR013).
@@ -10,13 +17,6 @@ public interface IAggregateRoot;
 public interface ISoftDeletable
 {
     bool IsDeleted { get; }
-}
-
-public enum BookGenre
-{
-    Fiction,
-    NonFiction,
-    Poetry,
 }
 
 public sealed class Author : IAggregateRoot

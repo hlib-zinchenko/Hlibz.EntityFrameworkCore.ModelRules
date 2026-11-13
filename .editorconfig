@@ -19,17 +19,710 @@ indent_size = 2
 indent_size = 2
 
 [*.cs]
+
+#==============================#
+# Code style rules            #
+#==============================#
+
 tab_width = 4
 
+csharp_indent_labels = one_less_than_current
+
 csharp_prefer_braces = true:warning
+csharp_prefer_simple_using_statement = true:suggestion
+
+csharp_style_expression_bodied_accessors = true:silent
+csharp_style_expression_bodied_constructors = false:silent
+csharp_style_expression_bodied_indexers = true:silent
 csharp_style_expression_bodied_lambdas = true:silent
+csharp_style_expression_bodied_local_functions = false:silent
 csharp_style_expression_bodied_methods = false:silent
+csharp_style_expression_bodied_operators = false:silent
 csharp_style_var_for_built_in_types = false:error
 csharp_style_var_when_type_is_apparent = false:error
+
 csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_prefer_method_group_conversion = true:warning
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_prefer_range_operator = false:warning
+
 csharp_using_directive_placement = outside_namespace:warning
 
 dotnet_separate_import_directive_groups = true
 dotnet_sort_system_directives_first = true
+
 dotnet_style_coalesce_expression = true:warning
 dotnet_style_null_propagation = true:warning
+dotnet_style_operator_placement_when_wrapping = beginning_of_line
+
+#==============================#
+# Naming rules                #
+#==============================#
+
+dotnet_naming_rule.async_methods_should_end_with_async.severity = warning
+dotnet_naming_rule.async_methods_should_end_with_async.symbols = async_methods
+dotnet_naming_rule.async_methods_should_end_with_async.style = end_with_async
+
+dotnet_naming_rule.constants_should_be_pascal_case.severity = warning
+dotnet_naming_rule.constants_should_be_pascal_case.symbols = constants
+dotnet_naming_rule.constants_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.interface_should_be_begins_with_i.severity = warning
+dotnet_naming_rule.interface_should_be_begins_with_i.symbols = interface
+dotnet_naming_rule.interface_should_be_begins_with_i.style = begins_with_i
+
+dotnet_naming_rule.non_field_members_should_be_pascal_case.severity = warning
+dotnet_naming_rule.non_field_members_should_be_pascal_case.symbols = non_field_members
+dotnet_naming_rule.non_field_members_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.style = camel_case_with_underscore
+
+dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.severity = warning
+dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.symbols = static_readonly_fields
+dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.types_should_be_pascal_case.severity = warning
+dotnet_naming_rule.types_should_be_pascal_case.symbols = types
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case
+
+#==============================#
+# Naming symbol specifications#
+#==============================#
+
+dotnet_naming_symbols.async_methods.applicable_kinds = method
+dotnet_naming_symbols.async_methods.applicable_accessibilities = *
+dotnet_naming_symbols.async_methods.required_modifiers = async
+
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.applicable_accessibilities = *
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.interface.required_modifiers =
+
+dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, method
+dotnet_naming_symbols.non_field_members.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.non_field_members.required_modifiers =
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_fields.required_modifiers =
+
+dotnet_naming_symbols.static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.static_readonly_fields.applicable_accessibilities = private
+dotnet_naming_symbols.static_readonly_fields.required_modifiers = static, readonly
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum
+dotnet_naming_symbols.types.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.types.required_modifiers =
+
+#==============================#
+# Naming styles               #
+#==============================#
+
+dotnet_naming_style.begins_with_i.capitalization = pascal_case
+dotnet_naming_style.begins_with_i.required_prefix = I
+dotnet_naming_style.begins_with_i.required_suffix =
+dotnet_naming_style.begins_with_i.word_separator =
+
+dotnet_naming_style.camel_case_with_underscore.capitalization = camel_case
+dotnet_naming_style.camel_case_with_underscore.required_prefix = _
+dotnet_naming_style.camel_case_with_underscore.required_suffix =
+
+dotnet_naming_style.end_with_async.capitalization = pascal_case
+dotnet_naming_style.end_with_async.required_suffix = Async
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+dotnet_naming_style.pascal_case.required_prefix =
+dotnet_naming_style.pascal_case.required_suffix =
+dotnet_naming_style.pascal_case.word_separator =
+
+
+#==============================#
+# Diagnostic severities       #
+#==============================#
+
+# S1135: Complete the task associated to this 'TODO' comment.
+dotnet_diagnostic.S1135.severity = none
+
+# CA1002: Do not expose generic lists
+dotnet_diagnostic.CA1002.severity = none
+
+# CA1051: Do not declare visible instance fields
+dotnet_diagnostic.CA1051.severity = warning
+
+# CA1054: URI parameters should not be strings
+dotnet_diagnostic.CA1054.severity = none
+
+# CA1055: URI return values should not be strings
+dotnet_diagnostic.CA1055.severity = none
+
+# CA1056: URI properties should not be strings
+dotnet_diagnostic.CA1056.severity = none
+
+# CA1062: Validate arguments of public methods
+dotnet_diagnostic.CA1062.severity = none
+
+# CA1710: Identifiers should have correct suffix
+dotnet_code_quality.CA1710.api_surface = all
+
+# CA1716: Identifiers should not match keywords
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1724: Type names should not match namespaces
+dotnet_diagnostic.CA1724.severity = none
+
+# CA1812: Avoid uninstantiated internal classes
+dotnet_diagnostic.CA1812.severity = none
+
+# CA1852: Seal internal types
+dotnet_code_quality.CA1852.ignore_internalsvisibleto = true
+
+# CA1860: Prefer comparing 'Count' to 0 rather than using 'Any()'
+dotnet_diagnostic.CA1860.severity = none
+
+# CA2007: Do not directly await a Task use ConfigureAwait
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.SA1402.severity = none
+# Test methods are named Subject_WithCondition_ExpectedOutcome, without an Async suffix.
+dotnet_naming_rule.async_methods_should_end_with_async.severity = none
+# Test helpers may carry a summary without documenting every parameter.
+dotnet_diagnostic.SA1611.severity = none
+dotnet_diagnostic.SA1615.severity = none
+dotnet_diagnostic.SA1618.severity = none
+# Test models: Entities.cs holds many related types, grouped by scenario rather than by kind.
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.SA1202.severity = none
+dotnet_diagnostic.SA1204.severity = none
+dotnet_diagnostic.SA1649.severity = none
+
+# CA2227: Collection properties should be read only
+dotnet_diagnostic.CA2227.severity = none
+
+# CS1591: Missing XML comment for publicly visible type or member
+dotnet_diagnostic.CS1591.severity = warning
+
+# CS1998: Async method lacks 'await' operators and will run synchronously
+dotnet_diagnostic.CS1998.severity = warning
+
+#IDE0008 : Use explicit type instead of var
+dotnet_diagnostic.IDE0008.severity = error
+
+# IDE0040: Add accessibility modifiers
+dotnet_diagnostic.IDE0040.severity = warning
+
+# IDE0090: Use 'new(...)' to simplify object creation
+dotnet_diagnostic.IDE0090.severity = warning
+
+# IDE1006: Missing Async suffix on async methods
+dotnet_diagnostic.IDE1006.severity = warning
+
+# IDE0160: Namespace declaration preferences
+dotnet_diagnostic.IDE0161.severity = warning
+
+# RS1035: The symbol 'Environment' is banned for use by analyzers: Analyzers should not read their settings directly from environment variables.
+dotnet_diagnostic.RS1035.severity = warning
+
+# SA0001: XML comment analysis is disabled due to project configuration
+dotnet_diagnostic.SA0001.severity = none
+
+# SA1000: Keywords should be spaced correctly
+dotnet_diagnostic.SA1000.severity = warning
+
+# SA1001: Commas should be spaced correctly
+dotnet_diagnostic.SA1001.severity = warning
+
+# SA1003: Symbols should be spaced correctly
+dotnet_diagnostic.SA1003.severity = warning
+
+# SA1008: Opening parenthesis should be spaced correctly
+dotnet_diagnostic.SA1008.severity = warning
+
+# SA1009: Closing parenthesis should be spaced correctly
+dotnet_diagnostic.SA1009.severity = warning
+
+# SA1010: Opening square brackets should be spaced correctly
+dotnet_diagnostic.SA1010.severity = warning
+
+# SA1011: Closing square brackets should be spaced correctly
+dotnet_diagnostic.SA1011.severity = warning
+
+# SA1012: Opening brace should be preceded by a space
+dotnet_diagnostic.SA1012.severity = warning
+
+# SA1014: Opening generic brackets should be spaced correctly
+dotnet_diagnostic.SA1014.severity = warning
+
+# SA1015: Closing generic brackets should be spaced correctly
+dotnet_diagnostic.SA1015.severity = warning
+
+# SA1019: Member access symbols should be spaced correctly
+dotnet_diagnostic.SA1019.severity = warning
+
+# SA1024: Colons Should Be Spaced Correctly
+dotnet_diagnostic.SA1024.severity = warning
+
+# SA1025: Code should not contain multiple whitespace in a row
+dotnet_diagnostic.SA1025.severity = warning
+
+# SA1026: Code should not contain space after new or stackalloc keyword in implicitly typed array allocation
+dotnet_diagnostic.SA1026.severity = warning
+
+# SA1028: Code should not contain trailing whitespace
+dotnet_diagnostic.SA1028.severity = warning
+
+# SA1101: Prefix local calls with this
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1106: Code should not contain empty statements
+dotnet_diagnostic.SA1106.severity = warning
+
+# SA1107: Code should not contain multiple statements on one line
+dotnet_diagnostic.SA1107.severity = warning
+
+# SA1116: Split parameters should start on line after declaration
+dotnet_diagnostic.SA1116.severity = warning
+
+# SA1117: Parameters should be on same line or separate lines
+dotnet_diagnostic.SA1117.severity = warning
+
+# SA1118: Parameter should not span multiple lines
+dotnet_diagnostic.SA1118.severity = warning
+
+# SA1119: Statement should not use unnecessary parenthesis
+dotnet_diagnostic.SA1119.severity = warning
+
+# SA1122: Use string.Empty for empty strings
+dotnet_diagnostic.SA1122.severity = warning
+
+# SA1128: Put constructor initializers on their own line
+dotnet_diagnostic.SA1128.severity = warning
+
+# SA1134: Attributes should not share line
+dotnet_diagnostic.SA1134.severity = warning
+
+# SA1137: Elements should have the same indentation
+dotnet_diagnostic.SA1137.severity = warning
+
+# SA1200: Using directive should appear outside a namespace declaration
+dotnet_diagnostic.SA1200.severity = warning
+
+# SA1201: Elements should appear in the correct order
+dotnet_diagnostic.SA1201.severity = warning
+
+# SA1202: Elements should be ordered by access
+dotnet_diagnostic.SA1202.severity = warning
+
+# SA1204: Static elements should appear before instance elements
+dotnet_diagnostic.SA1204.severity = warning
+
+# SA1210: Using directives should be ordered alphabetically by namespace
+dotnet_diagnostic.SA1210.severity = warning
+
+# SA1214: Readonly fields should appear before non-readonly fields
+dotnet_diagnostic.SA1214.severity = warning
+
+# SA1309: Field names should not begin with underscore
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1316: Tuple element names should use correct casing
+dotnet_diagnostic.SA1316.severity = warning
+
+# SA1404: Code analysis suppression should have justification
+dotnet_diagnostic.SA1404.severity = warning
+
+# SA1413: Use trailing comma in multi-line initializers
+dotnet_diagnostic.SA1413.severity = warning
+
+# SA1414: Tuple types in signatures should have element names
+dotnet_diagnostic.SA1414.severity = warning
+
+# SA1500: Braces for multi-line statements should not share line
+dotnet_diagnostic.SA1500.severity = warning
+
+# SA1503: Braces should not be omitted
+dotnet_diagnostic.SA1503.severity = warning
+
+# SA1505: Opening braces should not be followed by blank line
+dotnet_diagnostic.SA1505.severity = warning
+
+# SA1507: Code should not contain multiple blank lines in a row
+dotnet_diagnostic.SA1507.severity = warning
+
+# SA1508: Closing braces should not be preceded by blank line
+dotnet_diagnostic.SA1508.severity = warning
+
+# SA1509: Opening braces should not be preceded by blank line
+dotnet_diagnostic.SA1509.severity = warning
+
+# SA1513: Closing brace should be followed by blank line
+dotnet_diagnostic.SA1513.severity = warning
+
+# SA1515: Single-line comment should be preceded by blank line
+dotnet_diagnostic.SA1515.severity = warning
+
+# SA1516: Elements should be separated by blank line
+dotnet_diagnostic.SA1516.severity = warning
+
+# SA1517: Code should not contain blank lines at start of file
+dotnet_diagnostic.SA1517.severity = warning
+
+# SA1518: Use line endings correctly at end of file
+dotnet_diagnostic.SA1518.severity = warning
+
+# SA1600: Elements should be documented
+dotnet_diagnostic.SA1600.severity = none
+
+# SA1601: Elements should be documented
+dotnet_diagnostic.SA1601.severity = none
+
+# SA1602: Enumeration items should be documented
+dotnet_diagnostic.SA1602.severity = none
+
+# SA1623: Property summary documentation must match accessors
+dotnet_diagnostic.SA1623.severity = none
+
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1649: File name should match first type name
+dotnet_diagnostic.SA1649.severity = warning
+
+# xUnit Usage Analyzers (1xxx)
+
+# xUnit1000: Test classes must be public
+dotnet_diagnostic.xUnit1000.severity = error
+
+# xUnit1001: Fact methods cannot have parameters
+dotnet_diagnostic.xUnit1001.severity = error
+
+# xUnit1002: Test methods cannot have multiple Fact or Theory attributes
+dotnet_diagnostic.xUnit1002.severity = error
+
+# xUnit1003: Theory methods must have test data
+dotnet_diagnostic.xUnit1003.severity = error
+
+# xUnit1004: Test methods should not be skipped
+dotnet_diagnostic.xUnit1004.severity = error
+
+# xUnit1005: Fact methods should not have test data
+dotnet_diagnostic.xUnit1005.severity = error
+
+# xUnit1006: Theory methods should have parameters
+dotnet_diagnostic.xUnit1006.severity = error
+
+# xUnit1007: ClassData must point at a valid class
+dotnet_diagnostic.xUnit1007.severity = error
+
+# xUnit1008: Test data attribute should only be used on a Theory
+dotnet_diagnostic.xUnit1008.severity = error
+
+# xUnit1009: InlineData values must match the number of method parameters
+dotnet_diagnostic.xUnit1009.severity = error
+
+# xUnit1010: The value is not convertible to the method parameter type
+dotnet_diagnostic.xUnit1010.severity = error
+
+# xUnit1011: There is no matching method parameter
+dotnet_diagnostic.xUnit1011.severity = error
+
+# xUnit1012: Null should not be used for value type parameters
+dotnet_diagnostic.xUnit1012.severity = error
+
+# xUnit1013: Public method should be marked as test
+dotnet_diagnostic.xUnit1013.severity = error
+
+# xUnit1014: MemberData should use nameof operator for member name
+dotnet_diagnostic.xUnit1014.severity = error
+
+# xUnit1015: MemberData must reference an existing member
+dotnet_diagnostic.xUnit1015.severity = error
+
+# xUnit1016: MemberData must reference a public member
+dotnet_diagnostic.xUnit1016.severity = error
+
+# xUnit1017: MemberData must reference a static member
+dotnet_diagnostic.xUnit1017.severity = error
+
+# xUnit1018: MemberData must reference a valid member kind
+dotnet_diagnostic.xUnit1018.severity = error
+
+# xUnit1019: MemberData must reference a member providing a valid data type
+dotnet_diagnostic.xUnit1019.severity = error
+
+# xUnit1020: MemberData must reference a property with a getter
+dotnet_diagnostic.xUnit1020.severity = error
+
+# xUnit1021: MemberData should not have parameters if the referenced member is not a method
+dotnet_diagnostic.xUnit1021.severity = error
+
+# xUnit1022: Theory methods cannot have a parameter array.
+# Does not apply to xUnit.net v3
+# dotnet_diagnostic.xUnit1022.severity = error
+
+# xUnit1023: Theory methods cannot have default parameter values.
+# Does not apply to xUnit.net v3
+# dotnet_diagnostic.xUnit1023.severity = error
+
+# xUnit1024: Test methods cannot have overloads
+dotnet_diagnostic.xUnit1024.severity = error
+
+# xUnit1025: InlineData should be unique within the Theory it belongs to
+dotnet_diagnostic.xUnit1025.severity = error
+
+# xUnit1026: Theory methods should use all of their parameters
+dotnet_diagnostic.xUnit1026.severity = error
+
+# xUnit1027: Collection definition classes must be public
+dotnet_diagnostic.xUnit1027.severity = error
+
+# xUnit1028: Test method must have valid return type
+dotnet_diagnostic.xUnit1028.severity = error
+
+# xUnit1029: Local functions cannot be test functions
+dotnet_diagnostic.xUnit1029.severity = error
+
+# xUnit1030: Do not call ConfigureAwait in test method
+dotnet_diagnostic.xUnit1030.severity = error
+
+# xUnit1031: Do not use blocking task operations in test method
+dotnet_diagnostic.xUnit1031.severity = error
+
+# xUnit1032: Test classes cannot be nested within a generic class
+dotnet_diagnostic.xUnit1032.severity = error
+
+# xUnit1033: Test classes decorated with IClassFixture/ICollectionFixture should add constructor argument of type TFixture
+dotnet_diagnostic.xUnit1033.severity = error
+
+# xUnit1034: Null should only be used for nullable parameters
+dotnet_diagnostic.xUnit1034.severity = error
+
+# xUnit1035: The value is not convertible to the method parameter type
+dotnet_diagnostic.xUnit1035.severity = error
+
+# xUnit1036: There is no matching method parameter
+dotnet_diagnostic.xUnit1036.severity = error
+
+# xUnit1037: There are fewer theory data type arguments than required
+dotnet_diagnostic.xUnit1037.severity = error
+
+# xUnit1038: There are more theory data type arguments than allowed
+dotnet_diagnostic.xUnit1038.severity = error
+
+# xUnit1039: The type argument to theory data is not compatible
+dotnet_diagnostic.xUnit1039.severity = error
+
+# xUnit1040: The type argument to theory data is nullable, while the method parameter is not
+dotnet_diagnostic.xUnit1040.severity = error
+
+# xUnit1041: Fixture arguments to test classes must have fixture sources
+dotnet_diagnostic.xUnit1041.severity = error
+
+# xUnit1042: The member referenced by MemberData returns untyped data rows
+dotnet_diagnostic.xUnit1042.severity = error
+
+# xUnit1043: Constructors on classes derived from FactAttribute must be public
+dotnet_diagnostic.xUnit1043.severity = error
+
+# xUnit1044: Avoid using TheoryData type arguments that are not serializable
+dotnet_diagnostic.xUnit1044.severity = error
+
+# xUnit1045: Avoid using TheoryData type arguments that might not be serializable
+dotnet_diagnostic.xUnit1045.severity = suggestion
+
+# xUnit1046: Avoid using TheoryDataRow arguments that are not serializable
+dotnet_diagnostic.xUnit1046.severity = error
+
+# xUnit1047: Avoid using TheoryDataRow arguments that might not be serializable
+dotnet_diagnostic.xUnit1047.severity = suggestion
+
+# xUnit1048: Avoid using 'async void' for test methods as it is deprecated in xUnit.net v3
+# Does not apply to xUnit.net v3
+# dotnet_diagnostic.xUnit1048.severity = error
+
+# xUnit1049: Do not use 'async void' for test methods as it is no longer supported
+dotnet_diagnostic.xUnit1049.severity = error
+
+# xUnit1050: The class referenced by the ClassData attribute returns untyped data rows
+dotnet_diagnostic.xUnit1050.severity = error
+
+# xUnit1051: Calls to methods which accept CancellationToken should use TestContext.Current.CancellationToken
+dotnet_diagnostic.xUnit1051.severity = error
+
+# xUnit1052: Avoid using 'TheoryData<...>' with types that implement 'ITheoryDataRow'
+dotnet_diagnostic.xUnit1052.severity = error
+
+# xUnit Assertion Analyzers (2xxx)
+
+# xUnit2000: Constants and literals should be the expected argument
+dotnet_diagnostic.xUnit2000.severity = error
+
+# xUnit2001: Do not use invalid equality check
+dotnet_diagnostic.xUnit2001.severity = error
+
+# xUnit2002: Do not use null check on value type
+dotnet_diagnostic.xUnit2002.severity = error
+
+# xUnit2003: Do not use equality check to test for null value
+dotnet_diagnostic.xUnit2003.severity = error
+
+# xUnit2004: Do not use equality check to test for boolean conditions
+dotnet_diagnostic.xUnit2004.severity = error
+
+# xUnit2005: Do not use identity check on value type
+dotnet_diagnostic.xUnit2005.severity = error
+
+# xUnit2006: Do not use invalid string equality check
+dotnet_diagnostic.xUnit2006.severity = error
+
+# xUnit2007: Do not use typeof expression to check the type
+dotnet_diagnostic.xUnit2007.severity = error
+
+# xUnit2008: Do not use boolean check to match on regular expressions
+dotnet_diagnostic.xUnit2008.severity = error
+
+# xUnit2009: Do not use boolean check to check for substrings
+dotnet_diagnostic.xUnit2009.severity = error
+
+# xUnit2010: Do not use boolean check to check for string equality
+dotnet_diagnostic.xUnit2010.severity = error
+
+# xUnit2011: Do not use empty collection check
+dotnet_diagnostic.xUnit2011.severity = error
+
+# xUnit2012: Do not use Enumerable.Any() to check if a value exists in a collection
+dotnet_diagnostic.xUnit2012.severity = error
+
+# xUnit2013: Do not use equality check to check for collection size
+dotnet_diagnostic.xUnit2013.severity = error
+
+# xUnit2014: Do not use throws check to check for asynchronously thrown exception
+dotnet_diagnostic.xUnit2014.severity = error
+
+# xUnit2015: Do not use typeof expression to check the exception type
+dotnet_diagnostic.xUnit2015.severity = error
+
+# xUnit2016: Keep precision in the allowed range when asserting equality of doubles or decimals
+dotnet_diagnostic.xUnit2016.severity = error
+
+# xUnit2017: Do not use Contains() to check if a value exists in a collection
+dotnet_diagnostic.xUnit2017.severity = error
+
+# xUnit2018: Do not compare an object's exact type to an abstract class or interface
+dotnet_diagnostic.xUnit2018.severity = error
+
+# xUnit2019: Do not use obsolete throws check to check for asynchronously thrown exception
+# Does not apply to xUnit.net v3
+# dotnet_diagnostic.xUnit2019.severity = error
+
+# xUnit2020: Do not use always-failing boolean assertion to fail a test
+dotnet_diagnostic.xUnit2020.severity = error
+
+# xUnit2021: Async assertions should be awaited
+dotnet_diagnostic.xUnit2021.severity = error
+
+# xUnit2022: Boolean assertions should not be negated
+dotnet_diagnostic.xUnit2022.severity = error
+
+# xUnit2023: Do not use collection methods for single-item collections
+dotnet_diagnostic.xUnit2023.severity = error
+
+# xUnit2024: Do not use boolean asserts for simple equality tests
+dotnet_diagnostic.xUnit2024.severity = error
+
+# xUnit2025: The boolean assertion statement can be simplified
+dotnet_diagnostic.xUnit2025.severity = error
+
+# xUnit2026: Comparison of sets must be done with IEqualityComparer
+dotnet_diagnostic.xUnit2026.severity = error
+
+# xUnit2027: Comparison of sets to linear containers have undefined results
+dotnet_diagnostic.xUnit2027.severity = error
+
+# xUnit2028: Do not use Assert.Empty or Assert.NotEmpty with problematic types
+dotnet_diagnostic.xUnit2028.severity = error
+
+# xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection
+dotnet_diagnostic.xUnit2029.severity = error
+
+# xUnit2030: Do not use Assert.NotEmpty to check if a value exists in a collection
+dotnet_diagnostic.xUnit2030.severity = error
+
+# xUnit2031: Do not use Where clause with Assert.Single
+dotnet_diagnostic.xUnit2031.severity = error
+
+# xUnit2032: Type assertions based on 'assignable from' are confusingly named
+dotnet_diagnostic.xUnit2032.severity = error
+
+# xUnit Extensibility Analyzers (3xxx)
+
+# xUnit3000: Classes which cross AppDomain boundaries must derive from LongLivedMarshalByRefObject
+# Does not apply to xUnit.net v3
+# dotnet_diagnostic.xUnit3000.severity = error
+
+# xUnit3001: Serializable or runtime-created classes must have a public parameterless constructor
+dotnet_diagnostic.xUnit3001.severity = error
+
+# xUnit3002: JSON serializable classes should not be tested for their concrete type
+dotnet_diagnostic.xUnit3002.severity = error
+
+# xUnit3003: Classes extending FactAttribute should provide a public constructor for source info
+dotnet_diagnostic.xUnit3003.severity = error
+
+# CA1000: Do not declare static members on generic types — common pattern for Result<T>/PagedData<T>-style helpers
+dotnet_diagnostic.CA1000.severity = none
+
+# CA1034: Nested types should not be visible — every module's FieldsLengthLimitations groups related constants
+dotnet_diagnostic.CA1034.severity = none
+
+# CA1040: Avoid empty interfaces — marker interfaces (IRequest, IEntity, IValueObject, I<Module>UnitOfWork) are load-bearing
+dotnet_diagnostic.CA1040.severity = none
+
+# CA1711: Identifiers should not have incorrect suffix — "Stream" is fixed domain vocabulary (IncomeStream)
+dotnet_diagnostic.CA1711.severity = none
+
+# S2094: Remove this empty class — AssemblyMarker is a required reflection-discovery marker per module
+dotnet_diagnostic.S2094.severity = none
+
+# Tests: no XML docs, underscores in test names.
+[tests/**.cs]
+dotnet_diagnostic.CS1591.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.SA1402.severity = none
+# Test methods are named Subject_WithCondition_ExpectedOutcome, without an Async suffix.
+dotnet_naming_rule.async_methods_should_end_with_async.severity = none
+# Test helpers may carry a summary without documenting every parameter.
+dotnet_diagnostic.SA1611.severity = none
+dotnet_diagnostic.SA1615.severity = none
+dotnet_diagnostic.SA1618.severity = none
+# Test models: Entities.cs holds many related types, grouped by scenario rather than by kind.
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.SA1202.severity = none
+dotnet_diagnostic.SA1204.severity = none
+dotnet_diagnostic.SA1649.severity = none
+
+# Samples: apps whose types are public for readability, without XML docs.
+[samples/**.cs]
+dotnet_diagnostic.CS1591.severity = none
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1062.severity = none
+dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1649.severity = none
+# A console app: its output is English text, not localized resources.
+dotnet_diagnostic.CA1303.severity = none
+# The connection string's password is the local Docker Compose database's, not a secret.
+dotnet_diagnostic.S2068.severity = none
+
+# EF Core migrations are generated by `dotnet ef migrations add`.
+[samples/**/Migrations/*.cs]
+generated_code = true

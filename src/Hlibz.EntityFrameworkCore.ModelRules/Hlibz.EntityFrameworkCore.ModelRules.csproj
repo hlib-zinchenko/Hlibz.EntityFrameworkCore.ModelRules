@@ -1,41 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
-
   <PropertyGroup Label="NuGet metadata">
     <PackageId>Hlibz.EntityFrameworkCore.ModelRules</PackageId>
-    <Version>1.1.0</Version>
-    <Authors>Hlib Zinchenko</Authors>
     <Description>Declarative rules that check a finished EF Core model against your team's conventions: no shadow properties, snake_case (or other) naming for every table, column, constraint, index and sequence, decimals with explicit precision, strings with max length, C# nullability matching column nullability, enums stored as strings, one schema per DbContext, aggregate roots that refer to each other by key and carry a concurrency token, no cascade deletes across them, query filters on soft-deletable or tenant-owned entities, delete behaviors the database enforces, no redundant indexes, and identifiers within the database's length limit. Rules run whenever the model is built (including dotnet ef migrations add), or from a unit test via ModelRuleVerifier.Verify(dbContext), so they still apply with compiled models. Every violation is reported at once with a rule ID, and entity types or members can be excluded per rule.</Description>
-    <Copyright>Copyright (c) 2026 Hlib Zinchenko</Copyright>
     <PackageTags>efcore;ef-core;entity-framework-core;entityframeworkcore;conventions;model-validation;naming;snake-case;linting;ddd;modular-monolith;testing</PackageTags>
-    <PackageReleaseNotes>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/releases</PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-  </PropertyGroup>
-
-  <!-- Deterministic PDB paths in CI builds, so the published package is reproducible. -->
-  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\docs\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

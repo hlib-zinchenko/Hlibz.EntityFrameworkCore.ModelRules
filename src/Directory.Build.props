@@ -1,0 +1,21 @@
+<Project>
+
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <!--
+        Package validation checks that the packed assemblies expose the same API on every target
+        framework. Once 2.0.0 ships, add <PackageValidationBaselineVersion>2.0.0</...> so a pack
+        also fails on an accidental break against the last release (a 1.x baseline would fail on
+        the dropped net8.0/net9.0 targets).
+    -->
+    <PropertyGroup>
+        <EnablePackageValidation>true</EnablePackageValidation>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Each package's own README (src/<Package>/README.md) is what its nuget.org page shows. -->
+        <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="\" />
+        <None Include="$(MSBuildThisFileDirectory)../docs/icon.png" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>

@@ -2,6 +2,11 @@
 
 # Hlibz.EntityFrameworkCore.ModelRules
 
+[![CI](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml/badge.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/blob/main/LICENSE)<br>
+[![Hlibz.EntityFrameworkCore.ModelRules](https://img.shields.io/nuget/v/Hlibz.EntityFrameworkCore.ModelRules?label=Hlibz.EntityFrameworkCore.ModelRules)](https://www.nuget.org/packages/Hlibz.EntityFrameworkCore.ModelRules)
+[![downloads](https://img.shields.io/nuget/dt/Hlibz.EntityFrameworkCore.ModelRules?label=downloads)](https://www.nuget.org/packages/Hlibz.EntityFrameworkCore.ModelRules)
+
 Enforce your team's conventions on an EF Core model. The model fails to build, at startup or in a
 unit test, when an entity breaks one:
 
@@ -20,11 +25,6 @@ unit test, when an entity breaks one:
   affect entities EF Core happens to be tracking.
 - **No redundant indexes.**
 - **Identifier length.** No table, column or constraint name is longer than your database allows.
-
-[![CI](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml/badge.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/actions/workflows/ci.yml)
-[![NuGet](https://img.shields.io/nuget/v/Hlibz.EntityFrameworkCore.ModelRules.svg)](https://www.nuget.org/packages/Hlibz.EntityFrameworkCore.ModelRules)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Hlibz.EntityFrameworkCore.ModelRules.svg)](https://www.nuget.org/packages/Hlibz.EntityFrameworkCore.ModelRules)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/blob/main/LICENSE)
 
 ```text
 Hlibz.EntityFrameworkCore.ModelRules.ModelRuleViolationException: The EF Core model has 3 model rule violations:
@@ -67,7 +67,7 @@ dotnet add package Hlibz.EntityFrameworkCore.ModelRules
 With central package management, set the version in `Directory.Packages.props`:
 
 ```xml
-<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="1.0.0" />
+<PackageVersion Include="Hlibz.EntityFrameworkCore.ModelRules" Version="2.0.0" />
 ```
 
 ## Quick start
@@ -153,17 +153,8 @@ A context whose constructor takes only its options can also be passed as just th
 the context has no rules registered at all, so it can never pass by accident. Building a model
 never opens a connection, so the test needs no database.
 
-Want to see this against a real database before wiring it into your own project? The
-[samples project][samples] has a bookstore model that passes every rule, a Docker Compose
-PostgreSQL instance, and a checked-in migration - plus instructions for breaking a rule and
-watching `dotnet ef migrations add` fail with every violation listed:
-
-[samples]: https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/tree/main/samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
-
-```bash
-docker compose -f samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/docker-compose.yml up -d
-dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
-```
+Want to see this against a real database before wiring it into your own project? See
+[Samples](#samples).
 
 ## Rules
 
@@ -343,24 +334,46 @@ a compiled model the test is where the rules are enforced. `dotnet ef dbcontext 
 
 ## Compatibility
 
-- EF Core 8, 9, 10 and 11. The package has one build per EF Core major (`net8.0`, `net9.0`,
-  `net10.0`, `net11.0`), and CI tests each one.
+- EF Core 10 and 11. The package has one build per EF Core major (`net10.0`, `net11.0`), and CI
+  tests each one. For EF Core 8 or 9, use 1.1.0.
 - A recent EF Core patch. Each build requires at least the EF Core patch it was built and
   tested against; the package's NuGet page lists it under Dependencies. If restoring fails with
   `NU1605` (a package downgrade), update your EF Core packages to that patch or later. Microsoft
   only supports the latest patch of each EF Core major anyway.
 - Provider-neutral: rules only read EF Core's relational metadata. The test suite builds the same
-  models on PostgreSQL (Npgsql), SQL Server, SQLite and MySQL (Oracle's `MySql.EntityFrameworkCore`
-  on EF Core 8-11; Pomelo on EF Core 8-9, since Pomelo has no EF Core 10 or 11 release yet) and
-  checks that every provider reports exactly the same violations.
+  models on PostgreSQL (Npgsql), SQL Server, SQLite and MySQL (Oracle's
+  `MySql.EntityFrameworkCore`; Pomelo has no EF Core 10 or 11 release yet) and checks that every
+  provider reports exactly the same violations.
 - Provider features that add shadow properties by design are allowed, e.g. SQL Server temporal
   tables' period columns.
 - Integration tests run against real PostgreSQL, SQL Server and MySQL in Docker. They check
   that a model passing the rules really creates only snake_case tables, columns, constraints and
   indexes, and that a reported name is the one the database creates.
-- Some rules mean less on some databases. SQLite ignores precision, max length and schemas.
+
+## Limitations
+
+- **Rules check the model, not the database.** What `migrationBuilder.Sql(...)` creates, and
+  database objects the model doesn't describe, aren't checked.
+- **Some rules mean less on some databases.** SQLite ignores precision, max length and schemas.
   MySQL always names a primary key `PRIMARY`, whatever MR002 checked in the model. MR009's limit
   is yours to pick: 63 on PostgreSQL, 64 on MySQL, 128 on SQL Server.
+- **With a compiled model, rules run only from a test** (or `dotnet ef`), never at startup. See
+  [How it works](#how-it-works).
+- **MR014 compares only plain indexes.** It skips filtered indexes, indexes with
+  provider-specific settings, and, on EF Core 11, indexes that hold a JSON complex property,
+  since such a member has no single column to compare.
+
+## Samples
+
+[`samples/Hlibz.EntityFrameworkCore.ModelRules.Samples`](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/tree/main/samples/Hlibz.EntityFrameworkCore.ModelRules.Samples)
+has a bookstore model that passes every rule, a Docker Compose PostgreSQL instance, and a
+checked-in migration, plus instructions for breaking a rule and watching
+`dotnet ef migrations add` fail with every violation listed:
+
+```bash
+docker compose -f samples/Hlibz.EntityFrameworkCore.ModelRules.Samples/docker-compose.yml up -d
+dotnet run --project samples/Hlibz.EntityFrameworkCore.ModelRules.Samples
+```
 
 ## Versioning
 
@@ -376,6 +389,11 @@ always to follow the rule, or exclude the case. What only a major version may do
 - change what a rule requires, e.g. tighten what counts as a valid snake_case name.
 
 New rules are always opt-in: nothing starts checking your model until you register it.
+
+Each release is one version from one `vX.Y.Z` tag. EF Core is a minimum per target framework
+(10.0.12 on .NET 10, 11.0.0 on .NET 11), so a newer EF Core patch needs no new release of this
+package. 2.0.0 drops .NET 8 and 9 (EF Core 8 and 9); 1.1.0 remains the version for them. Release
+notes: [GitHub Releases](https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/releases).
 
 ## License
 

@@ -29,23 +29,22 @@ internal sealed class EntitiesHaveQueryFilterRule(Func<Type, bool> requiresFilte
                 continue;
             }
 
-            yield return Violation(
-                entityType,
-                null,
+            string message =
                 root == entityType
                     ? $"{reason} but has no query filter. Configure HasQueryFilter(...)."
                     : $"{reason} but its root type {root.DisplayName()} has no query filter, and "
                       + "EF Core only applies filters from the root. Configure HasQueryFilter(...) "
-                      + $"on {root.DisplayName()}.");
+                      + $"on {root.DisplayName()}.";
+
+            yield return Violation(
+                entityType,
+                null,
+                message);
         }
     }
 
     private static bool HasQueryFilter(IReadOnlyEntityType entityType)
     {
-#if NET10_0_OR_GREATER
         return entityType.GetDeclaredQueryFilters().Count > 0;
-#else
-        return entityType.GetQueryFilter() is not null;
-#endif
     }
 }

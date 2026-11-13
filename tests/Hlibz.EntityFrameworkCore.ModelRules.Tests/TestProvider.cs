@@ -14,11 +14,4 @@ public enum TestProvider
     /// Oracle's official MySQL provider (MySql.EntityFrameworkCore).
     /// </summary>
     MySql,
-
-#if !NET10_0_OR_GREATER
-    /// <summary>
-    /// Pomelo's MySQL provider, the most widely used one. It has no EF Core 10 release yet.
-    /// </summary>
-    Pomelo,
-#endif
 }

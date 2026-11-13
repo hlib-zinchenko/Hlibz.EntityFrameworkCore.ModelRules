@@ -40,13 +40,7 @@ internal sealed class TestDbContext(
             TestProvider.SqlServer => optionsBuilder.UseSqlServer(ConnectionString),
             TestProvider.Sqlite => optionsBuilder.UseSqlite("Data Source=:memory:"),
             TestProvider.MySql => optionsBuilder.UseMySQL(ConnectionString),
-#if !NET10_0_OR_GREATER
-            // An explicit server version, so the provider never connects to detect one.
-            TestProvider.Pomelo => optionsBuilder.UseMySql(
-                ConnectionString,
-                new MySqlServerVersion(new Version(8, 0, 36))),
-#endif
-            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, null),
+            _ => throw new InvalidOperationException($"Unknown test provider {provider}."),
         };
 
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, PerInstanceModelCacheKeyFactory>();

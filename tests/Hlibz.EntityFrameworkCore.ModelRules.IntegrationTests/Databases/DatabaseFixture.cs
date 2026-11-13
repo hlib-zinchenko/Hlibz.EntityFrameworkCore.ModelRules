@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 
 using DotNet.Testcontainers.Containers;
 
@@ -73,6 +74,10 @@ public abstract class DatabaseFixture : IAsyncLifetime
         return [.. rows.Select(row => ((string)row[0]!, (string)row[1]!))];
     }
 
+    [SuppressMessage(
+        "Security",
+        "CA2100:Review SQL queries for security vulnerabilities",
+        Justification = "The SQL is a constant in a test, never user input.")]
     internal static async Task<IReadOnlyList<object?[]>> QueryAsync(DbContext context, string sql)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

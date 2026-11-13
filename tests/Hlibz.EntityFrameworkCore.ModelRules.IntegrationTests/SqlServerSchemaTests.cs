@@ -15,12 +15,12 @@ public sealed class SqlServerSchemaTests(SqlServerFixture database)
         await context.Database.EnsureCreatedAsync(CancellationToken);
 
         Assert.Equal("Dog.Weight", Assert.Single(violations).Target);
-        object?[] column = Assert.Single(await DatabaseFixture.QueryAsync(
-            context,
+        string sql =
             """
             select DATA_TYPE, cast(NUMERIC_PRECISION as int), NUMERIC_SCALE
             from INFORMATION_SCHEMA.COLUMNS where COLUMN_NAME = 'Weight'
-            """));
+            """;
+        object?[] column = Assert.Single(await DatabaseFixture.QueryAsync(context, sql));
         Assert.Equal(["decimal", 18, 2], column);
     }
 

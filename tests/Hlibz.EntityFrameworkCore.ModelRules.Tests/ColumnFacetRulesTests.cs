@@ -384,7 +384,6 @@ public sealed class ColumnFacetRulesTests
         Assert.Empty(violations);
     }
 
-#if NET10_0_OR_GREATER
     [Fact]
     public void EnumsStoredAsStrings_WithEnumsInJsonComplexType_ReportsThemOnContainingEntity()
     {
@@ -399,7 +398,6 @@ public sealed class ColumnFacetRulesTests
             violations,
             violation => Assert.Equal(typeof(Document), violation.EntityClrType));
     }
-#endif
 
     /// <summary>
     /// Maps <see cref="BlogStatus"/> to a PostgreSQL enum type, which stores the member names,
@@ -411,22 +409,13 @@ public sealed class ColumnFacetRulesTests
     {
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-#if NET9_0_OR_GREATER
             optionsBuilder.UseNpgsql(
                 "Host=localhost",
                 npgsql => npgsql.MapEnum<BlogStatus>("blog_status"));
-#else
-            Npgsql.NpgsqlDataSourceBuilder dataSource = new("Host=localhost");
-            dataSource.MapEnum<BlogStatus>("blog_status");
-            optionsBuilder.UseNpgsql(dataSource.Build());
-#endif
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-#if !NET9_0_OR_GREATER
-            modelBuilder.HasPostgresEnum<BlogStatus>("blog_status");
-#endif
             modelBuilder.Entity<Region>().HasKey(x => x.Code);
             modelBuilder.Entity<Article>().Ignore(x => x.Ratings);
             Models.JsonDocuments(modelBuilder);

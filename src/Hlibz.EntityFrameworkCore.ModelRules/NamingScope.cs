@@ -1,9 +1,15 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Hlibz.EntityFrameworkCore.ModelRules;
 
 /// <summary>
 /// Which kinds of database identifiers a naming or identifier-length rule checks.
 /// </summary>
 [Flags]
+[SuppressMessage(
+    "Usage",
+    "CA2217:Do not mark enums with FlagsAttribute",
+    Justification = "All is ~None on purpose, so it also covers kinds a later version adds.")]
 public enum NamingScope
 {
     /// <summary>
