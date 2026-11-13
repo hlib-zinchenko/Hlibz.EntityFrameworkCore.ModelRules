@@ -25,6 +25,9 @@ internal abstract class ModelRule(string id, string name) : IModelRule
     /// A violation on a database identifier: against its entity type when it belongs to one,
     /// otherwise (sequences, functions, their schemas) against the identifier itself.
     /// </summary>
+    /// <param name="identifier">The identifier that breaks the rule.</param>
+    /// <param name="message">What is wrong and how to fix it.</param>
+    /// <returns>The violation.</returns>
     protected ModelRuleViolation Violation(ModelIdentifier identifier, string message) =>
         identifier.EntityType is { } entityType
             ? new(this, entityType, identifier.MemberPath, message)

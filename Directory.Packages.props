@@ -4,7 +4,9 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+        <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" />
         <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
         <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
         <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
         <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
@@ -23,37 +25,13 @@
         One EF Core major per target framework: each TFM's build of the library is compiled (and
         tested) against the EF Core major that ships for it, so the package's dependency group for
         that TFM pulls the matching EF Core. The providers are test-only: tests build every model
-        on each of them (no database needed) to prove the rules are provider-neutral. Pomelo has no
-        EF Core 10 or 11 release yet, so it only covers net8.0/net9.0; Oracle's
-        MySql.EntityFrameworkCore covers MySQL on all four. Sqlite.Core plus an explicit
+        on each of them (no database needed) to prove the rules are provider-neutral. MySQL is
+        Oracle's MySql.EntityFrameworkCore: Pomelo has no EF Core 10 or 11 release yet (add it
+        back per target framework once it has). Sqlite.Core plus an explicit
         SQLitePCLRaw bundle rather than the Sqlite package: the provider loads native SQLite even
         just to build a model, and the bundle the Sqlite package pulls in (2.1.6-2.1.11) ships a
         known-vulnerable SQLite.
     -->
-    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.31" />
-        <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.31" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="8.0.31" />
-        <PackageVersion Include="MySql.EntityFrameworkCore" Version="8.0.28" />
-        <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
-    </ItemGroup>
-    <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.20" />
-        <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.20" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.20" />
-        <PackageVersion Include="MySql.EntityFrameworkCore" Version="9.0.17" />
-        <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
-    </ItemGroup>
-    <!--
-        Test-only, never packed: Pomelo (net8.0/net9.0 only) pulls in MySqlConnector 2.3.5/2.4.0,
-        which NuGet audit fails (GHSA-473q-m89c-ghf8; patched in 2.6.1). Drop it once Pomelo
-        depends on 2.6.1 or later.
-    -->
-    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0'">
-        <PackageVersion Include="MySqlConnector" Version="2.6.1" />
-    </ItemGroup>
     <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
         <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
@@ -63,8 +41,9 @@
         <!--
             Test-only, never packed: the SqlServer provider pulls in Pkcs 9.0.11 through
             Microsoft.Data.SqlClient 6.1.x, which NuGet audit fails (GHSA-846f-f764-76mx,
-            GHSA-2fmv-rv2c-59x7; patched in 9.0.21). net10.0 only, since EF Core 8/9's SqlClient
-            doesn't depend on it. Drop it once the provider's SqlClient depends on 9.0.21 or later.
+            GHSA-2fmv-rv2c-59x7; patched in 9.0.21). net10.0 only: the EF Core 11 provider's
+            SqlClient doesn't pull it in. Drop it once the provider's SqlClient depends on 9.0.21
+            or later.
         -->
         <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     </ItemGroup>

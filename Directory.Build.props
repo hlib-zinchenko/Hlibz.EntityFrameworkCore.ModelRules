@@ -1,11 +1,53 @@
 <Project>
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
+        <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>latest</LangVersion>
+        <!--
+            One language version for every target framework, pinned rather than "latest" so the
+            build doesn't change with the installed SDK. C# 14 so the net10.0 target compiles from
+            the same source as net11.0.
+        -->
+        <LangVersion>14</LangVersion>
+        <AnalysisMode>All</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="StyleCop.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="SonarAnalyzer.CSharp">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <!-- NuGet metadata shared by every package; each csproj sets its own PackageId, Description and tags. -->
+    <PropertyGroup Label="NuGet metadata">
+        <Version>2.0.0</Version>
+        <Authors>Hlib Zinchenko</Authors>
+        <Copyright>Copyright (c) 2026 Hlib Zinchenko</Copyright>
+        <PackageReleaseNotes>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules/releases</PackageReleaseNotes>
+        <PackageProjectUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/hlib-zinchenko/Hlibz.EntityFrameworkCore.ModelRules</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <!-- Deterministic PDB paths in CI builds, so the published packages are reproducible. -->
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
 </Project>

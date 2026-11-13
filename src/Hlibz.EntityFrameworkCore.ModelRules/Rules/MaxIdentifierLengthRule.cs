@@ -18,10 +18,13 @@ internal sealed class MaxIdentifierLengthRule(int maxLength, NamingScope scope)
         {
             if ((scope & identifier.Scope) != 0 && identifier.Name.Length > maxLength)
             {
+                string message =
+                    $"{identifier.Kind} name '{identifier.Name}' is {identifier.Name.Length} "
+                    + $"characters long; the limit is {maxLength}.";
+
                 yield return Violation(
                     identifier,
-                    $"{identifier.Kind} name '{identifier.Name}' is {identifier.Name.Length} "
-                    + $"characters long; the limit is {maxLength}.");
+                    message);
             }
         }
     }

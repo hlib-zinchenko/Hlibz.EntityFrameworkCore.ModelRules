@@ -15,10 +15,6 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.IntegrationTests;
 public abstract class DatabaseSchemaTests<TFixture>(TFixture database)
     where TFixture : DatabaseFixture
 {
-    private static readonly Regex SnakeCase = new("^[a-z][a-z0-9]*(_[a-z0-9]+)*$");
-
-    private static readonly Regex QuotedName = new("'([^']+)'");
-
     protected TFixture Database { get; } = database;
 
     protected static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -228,7 +224,7 @@ public abstract class DatabaseSchemaTests<TFixture>(TFixture database)
     protected static string[] ReportedNames(IEnumerable<ModelRuleViolation> violations) =>
     [
         .. violations
-            .Select(violation => QuotedName.Match(violation.Message).Groups[1].Value)
+            .Select(violation => SchemaPatterns.QuotedName.Match(violation.Message).Groups[1].Value)
             .Order(StringComparer.Ordinal),
     ];
 
@@ -240,8 +236,18 @@ public abstract class DatabaseSchemaTests<TFixture>(TFixture database)
     [
         .. identifiers
             .Select(identifier => identifier.Name)
-            .Where(name => !Database.ServerAssignedNames.Contains(name) && !SnakeCase.IsMatch(name))
+            .Where(name => !Database.ServerAssignedNames.Contains(name) && !SchemaPatterns.SnakeCase.IsMatch(name))
             .Distinct()
             .Order(StringComparer.Ordinal),
     ];
+}
+
+/// <summary>
+/// Patterns the schema tests share, outside the generic class so each is created once.
+/// </summary>
+internal static class SchemaPatterns
+{
+    public static readonly Regex SnakeCase = new("^[a-z][a-z0-9]*(_[a-z0-9]+)*$");
+
+    public static readonly Regex QuotedName = new("'([^']+)'");
 }

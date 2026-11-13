@@ -1,4 +1,4 @@
-# Weekly, grouped: one PR for all NuGet updates, one for all GitHub Actions.
+# Weekly, grouped: one PR for all NuGet updates, one for all GitHub Actions, one for the SDK.
 # CI runs the tests on every PR, so a green check is what makes these safe to merge.
 version: 2
 updates:
@@ -20,8 +20,13 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "MySql.*"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "Pomelo.*"
-        update-types: ["version-update:semver-major"]
+  # The SDK pinned in global.json: one PR per new patch, which CI then builds with it.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
   # Actions run the NuGet release, so they get updated too.
   - package-ecosystem: github-actions
     directory: /

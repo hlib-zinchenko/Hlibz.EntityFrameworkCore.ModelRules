@@ -269,7 +269,7 @@ public sealed class EntryPointTests
 
         public IEnumerable<ModelRuleViolation> Validate(IReadOnlyModel model) =>
             model.GetEntityTypes()
-                .Where(entityType => !entityType.ClrType.Name.EndsWith('s'))
+                .Where(entityType => entityType.ClrType.Name[^1] != 's')
                 .Select(entityType => new ModelRuleViolation(this, entityType, null, "must end with 's'."));
     }
 
@@ -282,8 +282,9 @@ public sealed class EntryPointTests
         public static DbContextOptions<OptionsDbContext> CreateOptions() =>
             new DbContextOptionsBuilder<OptionsDbContext>().UseNpgsql("Server=localhost").Options;
 
-        protected override void ConfigureConventions(ModelConfigurationBuilder conventions) =>
-            conventions.UseModelRules(rules => rules.NoShadowProperties());
+        protected override void ConfigureConventions(
+            ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.UseModelRules(rules => rules.NoShadowProperties());
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             Models.Blog(modelBuilder);
@@ -305,7 +306,7 @@ public sealed class EntryPointTests
 
     public sealed class Clock
     {
-        public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
+        public DateTimeOffset UtcNow { get; } = DateTimeOffset.UtcNow;
     }
 
     /// <summary>
@@ -327,8 +328,9 @@ public sealed class EntryPointTests
                     TestDbContext.PerInstanceModelCacheKeyFactory>()
                 .Options;
 
-        protected override void ConfigureConventions(ModelConfigurationBuilder conventions) =>
-            conventions.UseModelRules(rules ?? (builder => builder.NoShadowProperties()));
+        protected override void ConfigureConventions(
+            ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.UseModelRules(rules ?? (builder => builder.NoShadowProperties()));
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             Models.Blog(modelBuilder);

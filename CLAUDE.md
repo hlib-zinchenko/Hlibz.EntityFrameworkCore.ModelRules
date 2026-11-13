@@ -13,7 +13,9 @@ builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
 
 ## Requires
 
-* .NET 11 SDK, plus the .NET 8, 9 and 10 runtimes to run every test target.
+* The .NET SDK `global.json` pins (11.0.100, patches roll forward; Dependabot bumps it), plus
+  the .NET 10 runtime to run both test targets. Pinned because warnings are errors and
+  `AnalysisMode=All`: a new SDK feature band brings new analyzer rules.
 
 ## Commands
 
@@ -21,7 +23,7 @@ builds the model (`UseModelRules` in `ConfigureConventions`) or from a test
 # Build everything
 dotnet build
 
-# Run all tests (all four target frameworks)
+# Run all tests (both target frameworks)
 dotnet test --project tests/Hlibz.EntityFrameworkCore.ModelRules.Tests
 
 # One target framework only
@@ -43,16 +45,15 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
 
 ## Architecture
 
-- **Multi-targeting = one EF Core major per TFM.** `Directory.Build.props` sets
-  `net8.0;net9.0;net10.0;net11.0` for every project, and `Directory.Packages.props` pins
-  `Microsoft.EntityFrameworkCore.Relational` (and the test-only providers) per TFM: 8.0.x on
-  net8.0, 9.0.x on net9.0, 10.0.x on net10.0, 11.0.x on net11.0. On net11.0 the Npgsql and
-  Oracle MySQL providers are still prereleases (test-only, so that's fine); the test project
-  suppresses NU1608 because Npgsql's rc pins EF Core to its own rc. So each build of the
-  library is compiled and tested against its own EF major, and the package's dependency group
-  for each TFM pulls the matching EF. Use `#if NET10_0_OR_GREATER` for APIs that only exist in
-  newer EF majors (see `ModelWalker.IsJson` and the JSON complex-type container column in
-  `ModelIdentifiers`). From EF Core 11 `IReadOnlyIndex.Properties` is a list of
+- **Multi-targeting = one EF Core major per TFM.** `Directory.Build.props` sets `net10.0;net11.0`
+  for every project, and `Directory.Packages.props` pins `Microsoft.EntityFrameworkCore.Relational`
+  (and the test-only providers) per TFM: 10.0.x on net10.0, 11.0.x on net11.0. On net11.0 the Npgsql
+  and Oracle MySQL providers are still prereleases (test-only, so that's fine); the test project
+  suppresses NU1608 because Npgsql's rc pins EF Core to its own rc. So each build of the library is
+  compiled and tested against its own EF major, and the package's dependency group for each TFM
+  pulls the matching EF. Use `#if NET11_0_OR_GREATER` for APIs that only exist in EF Core 11 (the EF
+  Core 11 tests in `NoRedundantIndexesTests` and `TableRulesTests` do). The 1.x line also built
+  net8.0/net9.0; 2.0.0 dropped them. From EF Core 11 `IReadOnlyIndex.Properties` is a list of
   `IReadOnlyPropertyBase` (an index can hold a JSON complex property), so take index members as
   `IEnumerable<IReadOnlyPropertyBase>`.
 - **The Relational pin is the package's minimum EF Core version.** Its version becomes the
@@ -132,7 +133,7 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
   `Internal/ModelRuleSet`.
 - `tests/` builds real models with no database: building a model never opens the connection.
   Tests use Npgsql by default. `ProviderCompatibilityTests` builds the same models on every
-  `TestProvider` (Npgsql, SQL Server, SQLite, Oracle MySQL, and Pomelo on net8.0/net9.0 only)
+  `TestProvider` (Npgsql, SQL Server, SQLite and Oracle MySQL; Pomelo has no EF Core 10/11 build)
   and asserts identical violations, so provider-specific behavior shows up there first. SQL
   Server temporal period columns are an example: `NoShadowPropertiesRule` recognizes them
   through SQL Server's annotation names, so the library never references a provider package.
@@ -184,17 +185,22 @@ Testcontainers 4.15 talks Docker API 1.44+. With an older local Docker Engine (e
 Versions follow the policy in README's "Versioning" section: rule IDs are permanent, a rule may
 report more in a minor or patch release, and new rules are opt-in.
 
-`.github/workflows/release.yml` runs on a pushed `vX.Y.Z` tag (or `vX.Y.Z-preview.N`, which
-publishes a prerelease). It builds and tests, packs
-`src/Hlibz.EntityFrameworkCore.ModelRules` with `-p:Version` taken from the tag, and publishes
-via NuGet Trusted Publishing (OIDC, no API key; see
+1. Set `Version` in `Directory.Build.props`, commit, then push the tag `vX.Y.Z`.
+2. The user approves the `release` environment run.
+3. Once the run succeeds and
+   `https://api.nuget.org/v3-flatcontainer/hlibz.entityframeworkcore.modelrules/index.json`
+   lists the version, Claude creates the GitHub release that `PackageReleaseNotes` links to:
+   `gh release create vX.Y.Z --verify-tag --title X.Y.Z [--prerelease when the version has a suffix] --notes-file <notes>`.
+   Claude writes the notes from `git log <previous tag>..vX.Y.Z`: breaking changes first, then
+   features and fixes, then a nuget.org link. Nothing is attached.
+
+`.github/workflows/release.yml` builds once at the tag's version (`-p:Version`), runs the unit
+tests against those binaries, packs them with `--no-build`, and publishes via NuGet Trusted
+Publishing (OIDC, no API key; see
 https://learn.microsoft.com/nuget/nuget-org/trusted-publishing). The job uses the `release` GitHub
 Environment, which must match the Environment on the nuget.org trusted-publishing policy. It also
 needs a `${{ secrets.NUGET_USER }}` repo secret holding the nuget.org profile username (not the
-email).
-
-To publish, don't bump anything in the csproj (the tag drives the version). Just run
-`git tag vX.Y.Z && git push origin vX.Y.Z`.
+email). It doesn't create the GitHub release; step 3 does.
 
 ## Conventions
 
@@ -204,10 +210,16 @@ To publish, don't bump anything in the csproj (the tag drives the version). Just
   without a `Version=` attribute.
 - No `Microsoft.SourceLink.GitHub` package reference: the .NET SDK (8+) includes Source Link
   itself, and the 8.0.0 package pulls a vulnerable `Microsoft.Build.Tasks.Git`.
-- No StyleCop/SonarAnalyzer: this is a small single-purpose package, kept lightweight on purpose.
-  `TreatWarningsAsErrors` is still on, and `GenerateDocumentationFile` means every public member
-  needs an XML doc comment.
+- StyleCop + Sonar + `AnalysisMode=All`, warnings as errors, `LangVersion` pinned to 14 (the
+  Hlibz family setup, in `Directory.Build.props` and `.editorconfig`). Every public member needs
+  an XML doc comment, and a documented internal one documents its parameters and return value
+  too. Tests and the sample relax a few rules in their own `.editorconfig` sections.
+- Shared NuGet metadata and `Version` live in `Directory.Build.props`; the csproj sets only
+  `PackageId`, `Description` and `PackageTags`. `src/Directory.Build.props` packs the package's
+  own `src/Hlibz.EntityFrameworkCore.ModelRules/README.md` (what nuget.org shows: short,
+  absolute links only) and turns on package validation. The root `README.md` is the full
+  documentation; keep the two in step when an API changes.
 - The package icon's source is `docs/icon.svg`. `docs/icon.png` (128x128) is packed as
-  `PackageIcon` and shown at the top of README through its `raw.githubusercontent.com` URL on
+  `PackageIcon` and shown at the top of both READMEs through its `raw.githubusercontent.com` URL on
   `main`, because nuget.org renders neither relative image paths nor raw HTML. So a changed
   icon shows in README only once it's pushed.

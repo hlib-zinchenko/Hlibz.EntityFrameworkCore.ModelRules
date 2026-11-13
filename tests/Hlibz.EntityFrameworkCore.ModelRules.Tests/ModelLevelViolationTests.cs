@@ -98,7 +98,7 @@ public sealed class ModelLevelViolationTests
 
         public IEnumerable<ModelRuleViolation> Validate(IReadOnlyModel model) =>
             model.GetSequences()
-                .Where(sequence => sequence.Name != sequence.Name.ToLowerInvariant())
+                .Where(sequence => sequence.Name.Any(char.IsUpper))
                 .Select(sequence => new ModelRuleViolation(
                     this,
                     $"sequence {sequence.Schema}.{sequence.Name}",

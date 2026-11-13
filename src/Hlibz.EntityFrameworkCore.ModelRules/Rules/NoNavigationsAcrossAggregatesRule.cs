@@ -34,12 +34,15 @@ internal sealed class NoNavigationsAcrossAggregatesRule(Func<Type, bool> isAggre
                     continue;
                 }
 
+                string message =
+                    $"navigation to {target.DisplayName()}, a separate aggregate root. Reference "
+                    + "it by key only: keep the foreign key property, remove the navigation, and "
+                    + $"load {target.DisplayName()} through its own repository.";
+
                 yield return Violation(
                     entityType,
                     navigation.Name,
-                    $"navigation to {target.DisplayName()}, a separate aggregate root. Reference "
-                    + "it by key only: keep the foreign key property, remove the navigation, and "
-                    + $"load {target.DisplayName()} through its own repository.");
+                    message);
             }
         }
     }

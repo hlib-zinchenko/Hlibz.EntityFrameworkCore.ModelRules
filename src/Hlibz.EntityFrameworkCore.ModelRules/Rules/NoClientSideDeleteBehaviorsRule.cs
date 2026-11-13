@@ -36,13 +36,18 @@ internal sealed class NoClientSideDeleteBehaviorsRule()
                     ? "OnDelete(DeleteBehavior.SetNull)"
                     : "OnDelete(DeleteBehavior.Cascade)";
 
-                yield return Violation(
-                    entityType,
+                string memberPath =
                     foreignKey.DependentToPrincipal?.Name
-                    ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name)),
+                    ?? string.Join(", ", foreignKey.Properties.Select(property => property.Name));
+                string message =
                     $"deleting {principal} rows {effect}; the database constraint does nothing, so "
                     + "the delete fails when any other row still refers to it. Configure "
-                    + $"{fix}, or OnDelete(DeleteBehavior.Restrict) to forbid it.");
+                    + $"{fix}, or OnDelete(DeleteBehavior.Restrict) to forbid it.";
+
+                yield return Violation(
+                    entityType,
+                    memberPath,
+                    message);
             }
         }
     }

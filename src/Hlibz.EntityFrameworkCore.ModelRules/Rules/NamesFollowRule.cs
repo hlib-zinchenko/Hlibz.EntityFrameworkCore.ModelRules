@@ -13,27 +13,30 @@ namespace Hlibz.EntityFrameworkCore.ModelRules.Rules;
 internal sealed class NamesFollowRule(Regex pattern, string styleName, NamingScope scope)
     : ModelRule("MR002", "NamesFollow")
 {
+    // The built-in patterns are linear, so this is never reached; it only bounds the worst case.
+    private static readonly TimeSpan MatchTimeout = TimeSpan.FromSeconds(1);
+
     public static NamesFollowRule For(NamingStyle style, NamingScope scope) =>
         style switch
         {
             NamingStyle.SnakeCase => new NamesFollowRule(
-                new Regex(@"^[a-z][a-z0-9]*(_[a-z0-9]+)*\z", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-z0-9]*(_[a-z0-9]+)*\z", RegexOptions.CultureInvariant, MatchTimeout),
                 "snake_case",
                 scope),
             NamingStyle.UpperSnakeCase => new NamesFollowRule(
-                new Regex(@"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*\z", RegexOptions.CultureInvariant),
+                new Regex(@"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*\z", RegexOptions.CultureInvariant, MatchTimeout),
                 "UPPER_SNAKE_CASE",
                 scope),
             NamingStyle.LowerCase => new NamesFollowRule(
-                new Regex(@"^[a-z][a-z0-9]*\z", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-z0-9]*\z", RegexOptions.CultureInvariant, MatchTimeout),
                 "lowercase",
                 scope),
             NamingStyle.CamelCase => new NamesFollowRule(
-                new Regex(@"^[a-z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant),
+                new Regex(@"^[a-z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant, MatchTimeout),
                 "camelCase",
                 scope),
             NamingStyle.PascalCase => new NamesFollowRule(
-                new Regex(@"^[A-Z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant),
+                new Regex(@"^[A-Z][a-zA-Z0-9]*\z", RegexOptions.CultureInvariant, MatchTimeout),
                 "PascalCase",
                 scope),
             _ => throw new ArgumentOutOfRangeException(nameof(style), style, null),

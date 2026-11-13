@@ -27,14 +27,17 @@ internal sealed class NullabilityMatchesClrRule() : ModelRule("MR005", "Nullabil
                 continue;
             }
 
-            yield return Violation(
-                property.EntityType,
-                property.Path,
+            string message =
                 clrNullable
                     ? "C# type is nullable but the column is NOT NULL. Make the C# type "
                       + "non-nullable, or remove IsRequired()."
                     : "C# type is non-nullable but the column allows NULL. Make the C# type "
-                      + "nullable, or configure IsRequired().");
+                      + "nullable, or configure IsRequired().";
+
+            yield return Violation(
+                property.EntityType,
+                property.Path,
+                message);
         }
     }
 
@@ -54,11 +57,15 @@ internal sealed class NullabilityMatchesClrRule() : ModelRule("MR005", "Nullabil
                 : Nullable.GetUnderlyingType(property.ClrType) is not null;
         }
 
-        NullabilityInfo? info = property.PropertyInfo is { } propertyInfo
-            ? context.Create(propertyInfo)
-            : property.FieldInfo is { } fieldInfo
-                ? context.Create(fieldInfo)
-                : null;
+        NullabilityInfo? info = null;
+        if (property.PropertyInfo is { } propertyInfo)
+        {
+            info = context.Create(propertyInfo);
+        }
+        else if (property.FieldInfo is { } fieldInfo)
+        {
+            info = context.Create(fieldInfo);
+        }
 
         return info?.ReadState switch
         {

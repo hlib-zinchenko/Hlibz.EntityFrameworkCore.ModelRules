@@ -22,12 +22,15 @@ internal sealed class DecimalsHavePrecisionRule() : ModelRule("MR003", "Decimals
                 continue;
             }
 
+            string message =
+                "decimal column has no precision, so its store type falls back to the provider's "
+                + "default (unconstrained numeric on PostgreSQL, decimal(18,2) with silent "
+                + "truncation on SQL Server). Configure HasPrecision(precision, scale).";
+
             yield return Violation(
                 property.EntityType,
                 property.Path,
-                "decimal column has no precision, so its store type falls back to the provider's "
-                + "default (unconstrained numeric on PostgreSQL, decimal(18,2) with silent "
-                + "truncation on SQL Server). Configure HasPrecision(precision, scale).");
+                message);
         }
     }
 }

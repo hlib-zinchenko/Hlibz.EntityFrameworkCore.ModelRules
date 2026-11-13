@@ -43,6 +43,8 @@ internal sealed class ModelRulesConvention : IModelFinalizingConvention
     /// <summary>
     /// The convention registered on this builder, registering one on first use.
     /// </summary>
+    /// <param name="configurationBuilder">The builder from <c>ConfigureConventions</c>.</param>
+    /// <returns>The one convention for that builder.</returns>
     public static ModelRulesConvention For(ModelConfigurationBuilder configurationBuilder)
     {
         if (!Registrations.TryGetValue(configurationBuilder, out ModelRulesConvention? convention))
@@ -59,6 +61,8 @@ internal sealed class ModelRulesConvention : IModelFinalizingConvention
     /// Whether this convention ran against the model with at least one rule set, and all its
     /// rules passed.
     /// </summary>
+    /// <param name="model">The model to look up.</param>
+    /// <returns><see langword="true"/> when the rules ran on it and passed.</returns>
     public static bool HasChecked(IReadOnlyModel model) => CheckedModels.TryGetValue(model, out _);
 
     public void AddRuleSet(ModelRuleSet ruleSet) => _ruleSets.Add(ruleSet);

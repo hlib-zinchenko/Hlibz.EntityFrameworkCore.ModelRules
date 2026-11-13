@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Hlibz.EntityFrameworkCore.ModelRules.Tests;
 
 public interface IAggregateRoot;
@@ -263,6 +265,10 @@ public sealed class Article
 
     public List<BlogStatus> Statuses { get; set; } = [];
 
+    [SuppressMessage(
+        "Performance",
+        "CA1819:Properties should not return arrays",
+        Justification = "MR006 must see an array of enums as well as a list.")]
     public BlogStatus[] History { get; set; } = [];
 
     public List<int> Ratings { get; set; } = [];

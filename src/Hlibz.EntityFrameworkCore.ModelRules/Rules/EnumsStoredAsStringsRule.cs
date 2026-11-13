@@ -29,23 +29,29 @@ internal sealed class EnumsStoredAsStringsRule() : ModelRule("MR006", "EnumsStor
                 if (ModelWalker.ProviderType(property.Property) != typeof(string)
                     && !IsStoredAsNativeEnum(property.Property))
                 {
+                    string message =
+                        $"enum {clrType.Name} is stored as its underlying number. Configure "
+                        + "HasConversion<string>(), or convert every enum at once with "
+                        + "configurationBuilder.Properties<Enum>().HaveConversion<string>().";
+
                     yield return Violation(
                         property.EntityType,
                         property.Path,
-                        $"enum {clrType.Name} is stored as its underlying number. Configure "
-                        + "HasConversion<string>(), or convert every enum at once with "
-                        + "configurationBuilder.Properties<Enum>().HaveConversion<string>().");
+                        message);
                 }
             }
             else if (EnumElementStoredAsNumber(property.Property) is { } elementType)
             {
-                yield return Violation(
-                    property.EntityType,
-                    property.Path,
+                string message =
                     $"collection of enum {elementType.Name} stores its elements as their "
                     + "underlying numbers. Configure "
                     + "PrimitiveCollection(...).ElementType().HasConversion<string>(); "
-                    + "configurationBuilder.Properties<Enum>() doesn't reach collection elements.");
+                    + "configurationBuilder.Properties<Enum>() doesn't reach collection elements.";
+
+                yield return Violation(
+                    property.EntityType,
+                    property.Path,
+                    message);
             }
         }
     }
