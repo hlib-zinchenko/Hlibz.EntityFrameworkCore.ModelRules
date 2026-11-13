@@ -35,9 +35,9 @@
     <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
         <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.12" />
-        <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.9" />
+        <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.12" />
         <!--
             Test-only, never packed: the SqlServer provider pulls in Pkcs 9.0.11 through
             Microsoft.Data.SqlClient 6.1.x, which NuGet audit fails (GHSA-846f-f764-76mx,
