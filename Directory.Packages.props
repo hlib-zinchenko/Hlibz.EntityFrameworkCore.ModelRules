@@ -3,22 +3,22 @@
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
     <ItemGroup>
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-        <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+        <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.36.0.15337" />
         <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
-        <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
+        <PackageVersion Include="StyleCop.Analyzers" Version="1.3.180" />
         <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
         <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
         <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
         <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
-        <PackageVersion Include="xunit.v3" Version="4.0.2" />
+        <PackageVersion Include="xunit.v3" Version="4.0.3" />
         <!--
             Samples-only: design-time tooling for `dotnet ef`. Unconditioned, not per-TFM like the
             EF Core packages below, because the samples project is single-targeted (net10.0 only,
             via its own TargetFramework), and its TargetFramework isn't set yet when a per-TFM
             Condition here would need to see it.
         -->
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
     </ItemGroup>
 
     <!--
@@ -35,7 +35,7 @@
     <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
         <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.12" />
         <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.12" />
         <!--
@@ -45,7 +45,7 @@
             SqlClient doesn't pull it in. Drop it once the provider's SqlClient depends on 9.0.21
             or later.
         -->
-        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
     </ItemGroup>
     <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0" />
