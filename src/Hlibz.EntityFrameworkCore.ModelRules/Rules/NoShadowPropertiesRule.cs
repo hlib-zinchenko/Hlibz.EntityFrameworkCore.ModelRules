@@ -26,8 +26,8 @@ internal sealed class NoShadowPropertiesRule() : ModelRule("MR001", "NoShadowPro
                     continue;
                 }
 
-                string message = property.GetContainingForeignKeys()
-                    .FirstOrDefault() is { } foreignKey
+                IReadOnlyForeignKey? foreignKey = property.GetContainingForeignKeys().FirstOrDefault();
+                string message = foreignKey is not null
                     ? $"shadow foreign key created by convention for the relationship to "
                       + $"{foreignKey.PrincipalEntityType.DisplayName()}. Add a property named "
                       + $"'{property.Name}' to the entity, or configure the relationship with "
